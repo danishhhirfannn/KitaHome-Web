@@ -1,6 +1,8 @@
 @import "tailwindcss/base";
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
+@import "./primevue/tailwind.css";
+@import "primeicons/primeicons.css";
 
 @layer base{
     
