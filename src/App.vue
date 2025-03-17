@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/auth'
 import { computed, onMounted } from 'vue'
 import SideNavigation from '@/components/SideNavigation.vue'
 import BottomNavigation from '@/components/BottomNavigation.vue'
+import AppBar from '@/components/AppBar.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -30,18 +31,47 @@ const hasBottomNav = computed(() => {
 const hasSideNav = computed(() => {
   return showNavigation.value && (authStore.isAdmin || authStore.isManagement)
 })
+
+const hasAppBar = computed(() => {
+  return showNavigation.value && (authStore.isAdmin || authStore.isManagement)
+})
 </script>
 
 <template>
   <div class="min-h-screen bg-gray-50">
-    <SideNavigation v-if="hasSideNav" />
-    <main :class="{ 'ml-64': hasSideNav, 'mb-16': hasBottomNav }">
-      <RouterView />
-    </main>
-    <BottomNavigation v-if="hasBottomNav" />
+    <div class="flex flex-col min-h-screen">
+      <!-- App Bar -->
+      <AppBar v-if="hasAppBar" />
+      
+      <!-- Main Content Area -->
+      <div class="flex flex-1">
+        <!-- Side Navigation -->
+        <SideNavigation v-if="hasSideNav" />
+        
+        <!-- Main Content -->
+        <main 
+          :class="[
+            'flex-1',
+            hasSideNav ? 'ml-[70px]' : '',
+            hasAppBar ? 'pt-0' : ''
+          ]"
+        >
+          <RouterView />
+        </main>
+      </div>
+
+      <!-- Bottom Navigation -->
+      <BottomNavigation v-if="hasBottomNav" class="fixed bottom-0 left-0 w-full" />
+    </div>
   </div>
 </template>
 
 <style scoped>
-/* Remove unused styles and keep only what's needed */
+.min-h-screen {
+  min-height: 100vh;
+}
+
+main {
+  min-height: calc(100vh - 64px); /* Subtract AppBar height */
+}
 </style>

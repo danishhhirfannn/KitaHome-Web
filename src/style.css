@@ -72,3 +72,27 @@
         --p-text-hover-muted-color: var(--p-surface-300);
     }
 }
+
+/* Button hover effects */
+button:hover,
+.p-button:hover,
+a:hover {
+  opacity: 0.9 !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+/* PrimeVue button specific hover effects */
+.p-button.p-button-text:not(:disabled):hover {
+  background: rgba(77, 91, 191, 0.1) !important;
+  color: #4D5BBF !important;
+}
+
+/* Custom button hover effects */
+.bg-\[\#4D5BBF\]:hover {
+  background-color: #3e49a3 !important;
+}
+
+/* Link hover effects */
+.text-\[\#4D5BBF\]:hover {
+  color: #3e49a3 !important;
+}
