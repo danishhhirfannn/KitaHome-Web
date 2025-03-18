@@ -61,6 +61,12 @@ const router = createRouter({
       name: 'profileManagement',
       component: profileManagement,
     },
+    {
+      path: '/management/residents/:id',
+      name: 'ResidentDetails',
+      component: () => import('@/views/management/residentDetails.vue'),
+      meta: { requiresAuth: true, roles: ['management'] }
+    },
   ],
 })
 

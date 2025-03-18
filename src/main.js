@@ -1,6 +1,7 @@
 import "./assets/tailwind.css";
 import "./style.css";
 import PrimeVue from "primevue/config";
+import ToastService from 'primevue/toastservice';
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import App from './App.vue';
@@ -14,6 +15,7 @@ app.use(PrimeVue, {
     darkModeSelector: false,
 });
 
+app.use(ToastService);
 app.use(pinia);
 app.use(router);
 
