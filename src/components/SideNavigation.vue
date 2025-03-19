@@ -17,7 +17,8 @@ const adminLinks = [
 const managementLinks = [
   { text: 'Dashboard', to: '/management/managementDashboard', icon: 'pi pi-home' },
   { text: 'Residents', to: '/management/residentManagement', icon: 'pi pi-users' },
-  { text: 'Residence', to: '/management/facilities', icon: 'pi pi-building' }
+  { text: 'Residence', to: '/management/residenceManagement', icon: 'pi pi-building' },
+  { text: 'Finance', to: '/management/financialManagement', icon: 'pi pi-wallet' },
 ]
 
 const handleLogout = async () => {

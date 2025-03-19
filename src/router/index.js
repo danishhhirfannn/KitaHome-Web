@@ -10,6 +10,8 @@ import profileManagement from '@/views/administrator/profileManagement.vue'
 //Management Views
 import managementDashboard from '@/views/management/managementDashboard.vue'
 import residentManagement from '@/views/management/residentManagement.vue'
+import residenceManagement from '@/views/management/residenceManagement.vue'
+import financialManagement from '@/views/management/financialManagement.vue'
 //Resident Views
 import residentDashboard from '@/views/resident/residentDashboard.vue'
 
@@ -55,6 +57,16 @@ const router = createRouter({
       path: '/management/residentManagement',
       name: 'residentManagement',
       component: residentManagement,
+    },
+    {
+      path: '/management/residenceManagement',
+      name: 'residenceManagement',
+      component: residenceManagement,
+    },
+    {
+      path: '/management/financialManagement',
+      name: 'financialManagement',
+      component: financialManagement,
     },
     {
       path: '/administrator/profileManagement',
