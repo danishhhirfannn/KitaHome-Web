@@ -12,6 +12,8 @@ import managementDashboard from '@/views/management/managementDashboard.vue'
 import residentManagement from '@/views/management/residentManagement.vue'
 import residenceManagement from '@/views/management/residenceManagement.vue'
 import financialManagement from '@/views/management/financialManagement.vue'
+import complaintsManagement from '@/views/management/complaintsManagement.vue'
+import communicationManagement from '@/views/management/communicationManagement.vue'
 //Resident Views
 import residentDashboard from '@/views/resident/residentDashboard.vue'
 
@@ -67,6 +69,16 @@ const router = createRouter({
       path: '/management/financialManagement',
       name: 'financialManagement',
       component: financialManagement,
+    },
+    {
+      path: '/management/complaintsManagement',
+      name: 'complaintsManagement',
+      component: complaintsManagement,
+    },
+    {
+      path: '/management/communicationManagement',
+      name: 'communicationManagement',
+      component: communicationManagement,
     },
     {
       path: '/administrator/profileManagement',

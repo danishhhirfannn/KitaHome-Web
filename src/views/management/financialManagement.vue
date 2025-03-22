@@ -1,9 +1,19 @@
 <template>
   <Toast position="top-right" />
   <div class="p-8">
-    <div class="mb-6">
-      <h1 class="text-2xl font-bold text-[#4D5BBF]">Financial Management</h1>
-      <p class="text-gray-600 mt-2">Manage all financial transactions and invoices</p>
+    <div class="flex justify-between items-center">
+      <div class="mb-6">
+        <h1 class="text-2xl font-bold text-[#4D5BBF]">Financial Management</h1>
+        <p class="text-gray-600 mt-2">Manage all financial transactions and invoices</p>
+      </div>
+        <Button
+        icon="pi pi-cog" 
+        label="Configure Automation"
+        raised
+        class="text-sm"
+        @click="viewDetails(slotProps.data)"
+        tooltip="View Details"
+        tooltipOptions="top" />
     </div>
 
     <div class="card bg-white rounded-lg shadow border border-gray-200">
@@ -22,79 +32,277 @@
         </div>
       </div>
 
-      <div v-if="activeTab === 'Transactions'">
-        <DataTable
-            :value="transactions"
-            :paginator="true"
-            :rows="5"
-            :loading="loading"
-            v-model:filters="filters"
-            responsiveLayout="scroll"
-            class="p-datatable-lg border-t border-gray-200"
+      <div class="transition-wrapper">
+        <Transition name="fade-slide" mode="out-in">
+          <div v-if="activeTab === 'Transactions'" key="transactions">
+            <DataTable
+              :value="transactions"
+              :paginator="true"
+              :rows="10"
+              :loading="loading"
+              v-model:filters="filters"
+              responsiveLayout="scroll"
+              class="p-datatable-lg border-t border-gray-200"
             >
-            <Column field="transactionID" header="ID" sortable></Column>
-            <Column field="transactionTitle" header="Title" sortable></Column>
-            <Column field="transactionUserID" header="User ID" sortable></Column>
-            <Column field="transactionAmount" header="Amount" sortable>
+              <Column field="transactionID" header="Transaction ID" sortable></Column>
+              <Column field="transactionTitle" header="Transaction Title" sortable></Column>
+              <Column field="User.fullName" header="Resident" sortable>
                 <template #body="{ data }">
-                <span :class="{
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold">
+                      {{ data.User?.fullName?.charAt(0).toUpperCase() }}
+                    </div>
+                    {{ data.User?.fullName || 'Unknown User' }}
+                  </div>
+                </template>
+              </Column>
+              <Column field="transactionAmount" header="Amount" sortable>
+                <template #body="{ data }">
+                  <span :class="{
                     'px-3 py-1 rounded-full': true,
-                    'bg-green-100 text-green-800': data.transactionAmount >= 0,
+                    'bg-primary-100 text-primary-500': data.transactionAmount >= 0,
                     'bg-red-100 text-red-800': data.transactionAmount < 0
-                }">
-                    {{ new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(data.transactionAmount) }}
-                </span>
+                  }">
+                    {{ new Intl.NumberFormat('en-MY', { style: 'currency', currency: 'MYR' }).format(data.transactionAmount) }}
+                  </span>
                 </template>
-            </Column>
-            <Column field="transactionCreatedAt" header="Created At" sortable>
+              </Column>
+              <Column field="transactionCreatedAt" header="Paid On" sortable>
                 <template #body="{ data }">
-                <div class="flex items-center gap-2">
-                    <i class="pi pi-calendar text-primary-500"></i>
-                    {{ new Date(data.created_at).toLocaleDateString() }}
-                </div>
+                  <div class="flex flex-col">
+                    <span class="font-medium">
+                      {{ new Date(data.created_at).toLocaleDateString() }}
+                    </span>
+                    <span class="">
+                      {{ new Date(data.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}
+                    </span>
+                  </div>
                 </template>
-            </Column>
+              </Column>
+              <Column field="isLate" header="Due Status" sortable>
+                <template #body="{ data }">
+                  <span :class="{
+                    'px-3 py-1 rounded-full inline-flex justify-center items-center': true,
+                    'text-red-800': data.isLate,
+                    'text-green-800': !data.isLate
+                  }">
+                    {{ data.isLate ? 'Late' : 'On Time' }}
+                  </span>
+                </template>
+              </Column>
+              <Column header="Actions">
+                <template #body="slotProps">
+                  <div class="flex justify-center">
+                    <Button 
+                      icon="pi pi-eye" 
+                      class="p-button-rounded p-button-text p-button-sm text-primary-600"
+                      @click="viewDetails(slotProps.data)"
+                      tooltip="View Details"
+                      tooltipOptions="top"
+                    />
+                  </div>
+                </template>
+              </Column>
             </DataTable>
-      </div>
-
-      <div v-if="activeTab === 'Invoices'">
-        <DataTable
-          :value="invoices"
-          :paginator="true"
-          :rows="10"
-          :loading="loading"
-          removableSort
-          v-model:sortField="sortField"
-          v-model:sortOrder="sortOrder"
-          dataKey="id"
-          :rowHover="true"
-          responsiveLayout="scroll"
-          class="p-datatable-lg border-t border-gray-200"
-          paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-          :rowsPerPageOptions="[5,10,25,50]"
-          currentPageReportTemplate="Showing {first} to {last} of {totalRecords}"
-        >
-          <Column field="created_at" header="Date" sortable>
-            <template #body="{ data }">
-              {{ new Date(data.created_at).toLocaleDateString() }}
-            </template>
-          </Column>
-          <Column field="invoiceTitle" header="Title" sortable></Column>
-          <Column field="invoiceAmount" header="Amount" sortable>
-            <template #body="{ data }">
-              {{ new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(data.invoiceAmount) }}
-            </template>
-          </Column>
-          <Column field="invoiceDescription" header="Description" sortable></Column>
-          <Column field="invoiceDueAt" header="Due Date" sortable>
-            <template #body="{ data }">
-              {{ new Date(data.invoiceDueAt).toLocaleDateString() }}
-            </template>
-          </Column>
-        </DataTable>
+          </div>
+          <div v-else-if="activeTab === 'Invoices'" key="invoices">
+            <DataTable
+              :value="invoices"
+              :paginator="true"
+              :rows="10"
+              :loading="loading"
+              v-model:filters="filters"
+              responsiveLayout="scroll"
+              class="p-datatable-lg border-t border-gray-200"
+            >
+              <Column field="invoiceID" header="Invoice ID" sortable></Column>
+              <Column field="invoiceTitle" header="Title" sortable></Column>
+              <Column field="User.fullName" header="Resident" sortable>
+                <template #body="{ data }">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold">
+                      {{ data.User?.fullName?.charAt(0).toUpperCase() }}
+                    </div>
+                    {{ data.User?.fullName || 'Unknown User' }}
+                  </div>
+                </template>
+              </Column>
+              <Column field="invoiceAmount" header="Amount" sortable>
+                <template #body="{ data }">
+                  <span :class="{
+                    'px-3 py-1 rounded-full': true,
+                    'bg-primary-100 text-primary-500': data.invoiceAmount >= 0,
+                    'bg-red-100 text-red-800': data.invoiceAmount < 0
+                  }">
+                    {{ new Intl.NumberFormat('en-MY', { style: 'currency', currency: 'MYR' }).format(data.invoiceAmount) }}
+                  </span>
+                </template>
+              </Column>
+              <Column field="invoiceDueAt" header="Due Date" sortable>
+                <template #body="{ data }">
+                  <div class="flex flex-col">
+                    <span class="font-medium">
+                      {{ new Date(data.invoiceDueAt).toLocaleDateString() }}
+                    </span>
+                    <span class="">
+                      {{ new Date(data.invoiceDueAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}
+                    </span>
+                  </div>
+                </template>
+              </Column>
+              <Column field="isPaid" header="Payment Status" sortable>
+                <template #body="{ data }">
+                  <span :class="{
+                    'px-3 py-1 rounded-full inline-flex justify-center items-center': true,
+                    'text-green-800': data.isPaid,
+                    'text-yellow-800': !data.isPaid
+                  }">
+                    {{ data.isPaid ? 'Paid' : 'Pending' }}
+                  </span>
+                </template>
+              </Column>
+              <Column header="Actions">
+                <template #body="slotProps">
+                  <div class="flex justify-center">
+                    <Button 
+                      icon="pi pi-eye" 
+                      class="p-button-rounded p-button-text p-button-sm text-primary-600"
+                      @click="viewDetails(slotProps.data)"
+                      tooltip="View Details"
+                      tooltipOptions="top"
+                    />
+                  </div>
+                </template>
+              </Column>
+            </DataTable>
+          </div>
+        </Transition>
       </div>
     </div>
   </div>
+
+  <Dialog 
+    v-model:visible="sidebarVisible" 
+    :modal="true"
+    :header="activeTab === 'Transactions' ? 'Transaction Details' : 'Invoice Details'"
+    :style="{width: '30rem'}"
+    :breakpoints="{'960px': '75vw', '640px': '90vw'}"
+    class="shadow-lg rounded-lg overflow-hidden"
+    :closable="true"
+    @hide="closeSidebar"
+  >
+    <div v-if="selectedItem" class="p-1 space-y-6">
+      <!-- ID Section -->
+      <div class="border-b border-gray-100 pb-4">
+        <h3 class="text-xs font-medium text-gray-500">
+          {{ activeTab === 'Transactions' ? 'Transaction ID' : 'Invoice ID' }}
+        </h3>
+        <p class="mt-1 text-sm text-gray-800">{{ selectedItem.transactionID }}</p>
+      </div>
+
+      <!-- Title Section -->
+      <div class="border-b border-gray-100 pb-4">
+        <h3 class="text-xs font-medium uppercase tracking-wide text-gray-500">Title</h3>
+        <p class="mt-1 text-base font-medium text-gray-800">{{ selectedItem[`${activeTab.toLowerCase().slice(0, -1)}Title`] }}</p>
+      </div>
+
+      <!-- Resident Section -->
+      <div class="border-b border-gray-100 pb-4">
+        <h3 class="text-xs font-medium uppercase tracking-wide text-gray-500">Resident</h3>
+        <div class="flex items-center gap-3 mt-2">
+          <div class="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold text-lg shadow-sm">
+            {{ selectedItem.User?.fullName?.charAt(0).toUpperCase() }}
+          </div>
+          <div>
+            <span class="text-base font-medium text-gray-800">{{ selectedItem.User?.fullName || 'Unknown User' }}</span>
+            <p class="text-xs text-gray-500">Resident</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Amount Section -->
+      <div class="border-b border-gray-100 pb-4">
+        <h3 class="text-xs font-medium uppercase tracking-wide text-gray-500">Amount</h3>
+        <p class="mt-1 text-xl font-bold" :class="{
+          'text-primary-600': selectedItem[`${activeTab.toLowerCase().slice(0, -1)}Amount`] >= 0,
+          'text-red-600': selectedItem[`${activeTab.toLowerCase().slice(0, -1)}Amount`] < 0
+        }">
+          {{ new Intl.NumberFormat('en-MY', { 
+            style: 'currency', 
+            currency: 'MYR' 
+          }).format(selectedItem[`${activeTab.toLowerCase().slice(0, -1)}Amount`]) }}
+        </p>
+      </div>
+
+      <!-- Status Section -->
+      <div class="border-b border-gray-100 pb-4">
+        <h3 class="text-xs font-medium uppercase tracking-wide text-gray-500">Status</h3>
+        <div class="mt-2">
+          <!-- For Transactions -->
+          <span v-if="activeTab === 'Transactions'" :class="{
+            'px-3 py-1.5 rounded-full inline-flex items-center text-sm font-medium': true,
+            'bg-red-100 text-red-800': selectedItem.isLate,
+            'bg-green-100 text-green-800': !selectedItem.isLate
+          }">
+            <span v-if="selectedItem.isLate" class="w-2 h-2 rounded-full bg-red-500 mr-2"></span>
+            <span v-else class="w-2 h-2 rounded-full bg-green-500 mr-2"></span>
+            {{ selectedItem.isLate ? 'Late' : 'On Time' }}
+          </span>
+          <!-- For Invoices -->
+          <span v-else :class="{
+            'px-3 py-1.5 rounded-full inline-flex items-center text-sm font-medium': true,
+            'bg-green-100 text-green-800': selectedItem.isPaid,
+            'bg-yellow-100 text-yellow-800': !selectedItem.isPaid
+          }">
+            <span v-if="selectedItem.isPaid" class="w-2 h-2 rounded-full bg-green-500 mr-2"></span>
+            <span v-else class="w-2 h-2 rounded-full bg-yellow-500 mr-2"></span>
+            {{ selectedItem.isPaid ? 'Paid' : 'Pending' }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Date Section -->
+      <div class="border-b border-gray-100 pb-4">
+        <h3 class="text-xs font-medium uppercase tracking-wide text-gray-500">
+          {{ activeTab === 'Transactions' ? 'Transaction Date' : 'Due Date' }}
+        </h3>
+        <div class="mt-2 flex items-center">
+          <div class="mr-3 p-2 bg-gray-50 rounded-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <div>
+            <p class="text-base font-medium text-gray-800">
+              {{ new Date(activeTab === 'Transactions' ? selectedItem.created_at : selectedItem.invoiceDueAt).toLocaleDateString() }}
+            </p>
+            <p class="text-xs text-gray-500">
+              {{ new Date(activeTab === 'Transactions' ? selectedItem.created_at : selectedItem.invoiceDueAt).toLocaleTimeString([], { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              }) }}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Description Section -->
+      <div v-if="selectedItem.description" class="pb-2">
+        <h3 class="text-xs font-medium uppercase tracking-wide text-gray-500">Description</h3>
+        <p class="mt-2 text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">{{ selectedItem.description }}</p>
+      </div>
+    </div>
+
+    <template #footer>
+      <div class="py-3 flex justify-end">
+        <Button 
+          label="View Invoice" 
+          icon="pi pi-receipt" 
+          class="text-sm"
+        />
+      </div>
+    </template>
+  </Dialog>
 </template>
 
 <script setup>
@@ -108,6 +316,7 @@ import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
+import Dialog from 'primevue/dialog'
 
 const toast = useToast()
 const authStore = useAuthStore()
@@ -124,8 +333,17 @@ const filters = ref({
   global: { value: null, matchMode: 'contains' }
 })
 
+const sidebarVisible = ref(false)
+const selectedItem = ref(null)
+
 const viewDetails = (data) => {
-  console.log('View details:', data)
+  selectedItem.value = data
+  sidebarVisible.value = true
+}
+
+const closeSidebar = () => {
+  sidebarVisible.value = false
+  selectedItem.value = null
 }
 
 const fetchFinancialData = async () => {
@@ -162,7 +380,13 @@ const fetchFinancialData = async () => {
     // Fetch transactions for these users
     const { data: transactionsData, error: transactionsError } = await supabase
       .from('Transaction')
-      .select('*')
+      .select(`
+        *,
+        User:transactionUserID (
+          fullName
+        ),
+        isLate
+      `)
       .in('transactionUserID', userIds)
 
     if (transactionsError) throw transactionsError
@@ -171,7 +395,13 @@ const fetchFinancialData = async () => {
     // Fetch invoices for these users
     const { data: invoicesData, error: invoicesError } = await supabase
       .from('Invoice')
-      .select('*')
+      .select(`
+        *,
+        User:invoiceUserID (
+          fullName
+        ),
+        isPaid
+      `)
       .in('invoiceUserID', userIds)
 
     if (invoicesError) throw invoicesError
@@ -226,79 +456,6 @@ onMounted(() => {
 
 .p-datatable .p-datatable-tbody > tr:hover {
   @apply bg-primary-50/50;
-}
-
-.card {
-  @apply bg-white rounded-lg shadow-sm;
-}
-
-/* PrimeVue Dialog Custom Styles */
-:deep(.user-details-dialog) {
-  @apply rounded-lg overflow-hidden;
-}
-
-:deep(.user-details-dialog .p-dialog-header) {
-  @apply bg-primary-50 border-b border-primary-100 px-6 py-4;
-}
-
-:deep(.user-details-dialog .p-dialog-content) {
-  @apply p-6;
-}
-
-:deep(.user-details-dialog .p-dialog-footer) {
-  @apply p-4 bg-gray-50 border-t border-gray-100;
-}
-
-:deep(.user-details-dialog .p-dialog-title) {
-  @apply text-lg font-semibold text-primary-700;
-}
-
-/* Animation classes provided by PrimeVue */
-:deep(.p-dialog-enter-active) {
-  transition: all 0.3s ease-out;
-}
-
-:deep(.p-dialog-leave-active) {
-  transition: all 0.2s ease-in;
-}
-
-:deep(.p-dialog-enter-from),
-:deep(.p-dialog-leave-to) {
-  opacity: 0;
-  transform: translateY(-50px);
-}
-
-:deep(.p-dialog-enter-to),
-:deep(.p-dialog-leave-from) {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* Mask animation */
-:deep(.p-dialog-mask.p-component-overlay-enter) {
-  animation: dialog-mask-in 0.2s;
-}
-
-:deep(.p-dialog-mask.p-component-overlay-leave-to) {
-  animation: dialog-mask-out 0.2s;
-}
-
-@keyframes dialog-mask-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes dialog-mask-out {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
 }
 
 /* Content transition animations */
