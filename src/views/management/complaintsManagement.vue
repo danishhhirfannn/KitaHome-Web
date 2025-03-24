@@ -86,6 +86,14 @@
             </span>
           </template>
         </Column>
+        <Column field="created_at" header="Received At" sortable>
+          <template #body="{ data }">
+            <span class="text-gray-700 flex flex-col">
+              <span>{{ new Date(data.created_at).toLocaleDateString() }}</span>
+              <span class=" text-gray-700">{{ new Date(data.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }}</span>
+            </span>
+          </template>
+        </Column>
         <Column field="isResolved" header="Status" sortable>
           <template #body="{ data }">
             <span :class="{
@@ -252,6 +260,16 @@
               <div class="flex-1">
                 <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                   <p class="text-gray-800">{{ selectedComplaint.complaintDescription || 'No description provided.' }}</p>
+                  
+                  <!-- Display complaint image if available -->
+                  <div v-if="selectedComplaint.complaintImageUrl" class="mt-4">
+                    <img 
+                      :src="selectedComplaint.complaintImageUrl" 
+                      alt="Complaint image" 
+                      class="w-full max-h-64 object-cover rounded-lg shadow-sm complaint-image"
+                      @click="openImagePreview(selectedComplaint.complaintImageUrl)"
+                    />
+                  </div>
                 </div>
                 <div class="flex items-center mt-2">
                   <span class="text-sm text-gray-500">
@@ -277,7 +295,7 @@
                       Staff
                     </span>
                     <span class="mx-2 text-gray-300">•</span>
-                    <span class="text-xs text-gray-500">
+                    <span class="text-sm text-gray-500">
                       {{ new Date(feedback.created_at).toLocaleString() || 'Date not available' }}
                     </span>
                   </div>
@@ -341,6 +359,18 @@
         </div>
       </div>
     </Dialog>
+
+    <!-- Image Preview Modal -->
+    <div v-if="isImagePreviewVisible" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[9999] p-4" @click.self="closeImagePreview">
+      <div class="relative bg-white rounded-lg shadow-lg max-w-3xl w-full">
+        <button class="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full bg-black bg-opacity-50 text-white hover:bg-opacity-70 transition-all" @click="closeImagePreview">
+          <i class="pi pi-times"></i>
+        </button>
+        <div class="p-2">
+          <img :src="previewImageUrl" alt="Image Preview" class="w-full h-auto rounded" />
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -366,6 +396,8 @@ const smartPrioritisation = ref(true)
 const displayDialog = ref(false)
 const selectedComplaint = ref(null)
 const replyMessage = ref('')
+const isImagePreviewVisible = ref(false)
+const previewImageUrl = ref('')
 
 const fetchComplaintsData = async () => {
   try {
@@ -409,6 +441,7 @@ const fetchComplaintsData = async () => {
         )
       `)
       .in('complaintUserID', userIds)
+      .order('created_at', { ascending: false })
       .order('created_at', { foreignTable: 'complaintFeedbacks', ascending: true })
 
     if (complaintsError) throw complaintsError
@@ -566,6 +599,17 @@ const getCurrentUserInitial = () => {
                    
   return fullName.charAt(0).toUpperCase();
 }
+
+// Open image preview
+const openImagePreview = (imageUrl) => {
+  previewImageUrl.value = imageUrl
+  isImagePreviewVisible.value = true
+}
+
+// Close image preview
+const closeImagePreview = () => {
+  isImagePreviewVisible.value = false
+}
 </script>
 
 <style scoped>
@@ -616,5 +660,18 @@ const getCurrentUserInitial = () => {
 .conversation-container::-webkit-scrollbar-thumb {
   background-color: rgba(0, 0, 0, 0.2);
   border-radius: 6px;
+}
+
+/* Complaint image styling */
+.complaint-image {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.complaint-image:hover {
+  transform: scale(1.01);
+  border-color: var(--primary-500);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 </style>

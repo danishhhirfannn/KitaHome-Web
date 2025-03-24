@@ -274,8 +274,8 @@ const user = ref({
 
 const quickActions = ref([
   { title: 'Finance', icon: 'pi pi-dollar', type: 'finance' },
-  { title: 'Complaint', icon: 'pi pi-flag', type: 'complaint' },
-  { title: 'Message', icon: 'pi pi-comments', type: 'message' }
+  { title: 'Complaint', icon: 'pi pi-comments', type: 'complaint' },
+  { title: 'Message', icon: 'pi pi-envelope', type: 'message' }
 ])
 
 // Replacing the static upcomingPayment ref with a function to fetch from db
@@ -394,10 +394,9 @@ const complaints = ref([
 const router = useRouter()
 const handleQuickAction = (type) => {
   if (type === 'finance') {
-    router.push('/resident/financialManagementResident')
+    router.push('/resident/financialManagement')
   } else if (type === 'complaint') {
-    // Handle complaint action
-    console.log('Complaint action clicked')
+    router.push('/resident/complaintManagementResident')
   } else if (type === 'message') {
     // Handle message action
     console.log('Message action clicked')

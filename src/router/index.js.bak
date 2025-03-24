@@ -104,8 +104,8 @@ const router = createRouter({
       component: complaintManagementResident,
     },
     {
-      path: '/resident/complaintDetails/:id',
-      name: 'complaint-details',
+      path: '/resident/complaintDetails',
+      name: 'complaintDetails',
       component: complaintDetails,
     },
   ],
