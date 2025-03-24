@@ -9,12 +9,7 @@ const navigationItems = [
   { 
     icon: 'pi pi-home',
     text: 'Home',
-    to: '/resident/dashboard'
-  },
-  { 
-    icon: 'pi pi-calendar',
-    text: 'Bookings',
-    to: '/resident/bookings'
+    to: '/resident/residentDashboard'
   },
   { 
     icon: 'pi pi-bell',

@@ -16,6 +16,7 @@ import complaintsManagement from '@/views/management/complaintsManagement.vue'
 import communicationManagement from '@/views/management/communicationManagement.vue'
 //Resident Views
 import residentDashboard from '@/views/resident/residentDashboard.vue'
+import financialManagementResident from '@/views/resident/financialManagementResident.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -90,6 +91,11 @@ const router = createRouter({
       name: 'ResidentDetails',
       component: () => import('@/views/management/residentDetails.vue'),
       meta: { requiresAuth: true, roles: ['management'] }
+    },
+    {
+      path: '/resident/financialManagementResident',
+      name: 'financialManagementResident',
+      component: financialManagementResident,
     },
   ],
 })
