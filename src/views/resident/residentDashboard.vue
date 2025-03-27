@@ -398,8 +398,7 @@ const handleQuickAction = (type) => {
   } else if (type === 'complaint') {
     router.push('/resident/complaintManagementResident')
   } else if (type === 'message') {
-    // Handle message action
-    console.log('Message action clicked')
+    router.push('/resident/chatroom')
   }
 }
 </script>

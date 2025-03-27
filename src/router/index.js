@@ -19,6 +19,8 @@ import residentDashboard from '@/views/resident/residentDashboard.vue'
 import financialManagementResident from '@/views/resident/financialManagementResident.vue'
 import complaintManagementResident from '@/views/resident/complaintManagementResident.vue'
 import complaintDetails from '@/views/resident/complaintDetails.vue'
+import chatroom from '@/views/resident/chatroom.vue'
+
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -107,6 +109,11 @@ const router = createRouter({
       path: '/resident/complaintDetails/:id',
       name: 'complaint-details',
       component: complaintDetails,
+    },
+    {
+      path: '/resident/chatroom',
+      name: 'chatroom',
+      component: chatroom,
     },
   ],
 })

@@ -144,7 +144,36 @@
                           ? 'bg-primary-100 text-primary-800' 
                           : 'bg-gray-100 text-gray-800'
                       ]">
-                        <p>{{ message.content }}</p>
+                        <p v-if="message.content">{{ message.content }}</p>
+                        
+                        <!-- Attachment preview -->
+                        <div v-if="message.attachmentUrl" class="mt-2">
+                          <!-- Show image attachments -->
+                          <a 
+                            v-if="isImageAttachment(message.attachmentUrl)" 
+                            href="javascript:void(0)"
+                            class="block"
+                            @click="showImagePreview(message.attachmentUrl)"
+                          >
+                            <img 
+                              :src="message.attachmentUrl" 
+                              alt="Attachment" 
+                              class="max-w-full rounded-lg max-h-48 object-contain"
+                            />
+                          </a>
+                          
+                          <!-- Show other file types as links -->
+                          <a 
+                            v-else 
+                            :href="message.attachmentUrl" 
+                            target="_blank" 
+                            class="flex items-center gap-2 p-2 bg-white rounded-lg border border-gray-200"
+                          >
+                            <i class="pi pi-file text-primary-500"></i>
+                            <span class="text-sm text-primary-700 truncate">{{ getAttachmentName(message.attachmentUrl) }}</span>
+                          </a>
+                        </div>
+                        
                         <div class="flex justify-end items-center mt-1">
                           <span class="text-xs opacity-70">{{ formatMessageTime(message.timestamp) }}</span>
                           <i v-if="message.senderId === currentUserId" :class="[
@@ -164,23 +193,66 @@
               
               <!-- Message Input -->
               <div class="p-3 border-t border-gray-200">
+                <!-- Attachment Preview Area -->
+                <div v-if="selectedFile" class="bg-white border border-gray-200 p-2 mb-2 rounded">
+                  <div class="flex items-center gap-2">
+                    <div class="flex-1 flex items-center">
+                      <!-- Image preview -->
+                      <div v-if="attachmentType === 'image'" class="relative h-12 w-12 bg-gray-100 rounded border border-gray-300 mr-2 overflow-hidden">
+                        <img :src="attachmentPreviewUrl" alt="Preview" class="h-full w-full object-cover" />
+                      </div>
+                      
+                      <!-- File preview for non-images -->
+                      <div v-else class="relative h-12 w-12 bg-gray-100 rounded border border-gray-300 mr-2 flex items-center justify-center">
+                        <i class="pi pi-file text-primary-500 text-xl"></i>
+                      </div>
+                      
+                      <div class="flex-1">
+                        <p class="text-sm font-medium truncate">{{ selectedFile.name }}</p>
+                        <p class="text-xs text-gray-500">{{ formatFileSize(selectedFile.size) }}</p>
+                      </div>
+                    </div>
+                    <Button
+                      icon="pi pi-times"
+                      class="p-button-rounded p-button-text p-button-sm"
+                      @click="clearAttachmentPreview"
+                      aria-label="Remove attachment"
+                    />
+                  </div>
+                </div>
+                
                 <div class="flex gap-2">
+                  <Button 
+                    icon="pi pi-paperclip" 
+                    class="p-button-text" 
+                    @click="handleAttachment"
+                    :disabled="!!selectedFile || uploadingAttachment"
+                    aria-label="Attach file"
+                  />
                   <span class="p-input-icon-right flex-1">
-                    <i v-if="sending" class="pi pi-spin pi-spinner"></i>
+                    <i v-if="sending || uploadingAttachment" class="pi pi-spin pi-spinner"></i>
                     <InputText 
                       v-model="newMessage" 
                       placeholder="Type your message..." 
                       class="w-full p-3"
                       @keydown.enter="sendMessage"
+                      :disabled="uploadingAttachment"
                     />
                   </span>
                   <Button 
                     icon="pi pi-send" 
                     class="p-button-primary" 
                     @click="sendMessage"
-                    :disabled="!newMessage.trim() || sending"
+                    :disabled="(!newMessage.trim() && !selectedFile) || sending || uploadingAttachment"
                   />
                 </div>
+                <input
+                  type="file"
+                  ref="fileInput"
+                  class="hidden"
+                  @change="onFileSelected"
+                  accept="image/*,.pdf,.doc,.docx"
+                />
               </div>
             </div>
           </template>
@@ -238,6 +310,84 @@
         />
       </template>
     </Dialog>
+    
+    <!-- Image Preview Dialog -->
+    <Dialog 
+      v-model:visible="imagePreviewDialog" 
+      :modal="true" 
+      :dismissableMask="true"
+      :closable="false"
+      :style="{ width: '90vw', maxWidth: '900px' }"
+      class="image-preview-dialog"
+    >
+      <div class="flex justify-center">
+        <img :src="previewImageUrl" alt="Full size image" class="max-w-full max-h-[80vh] object-contain" />
+      </div>
+      <template #footer>
+        <div class="flex justify-end">
+          <Button 
+            label="Close" 
+            icon="pi pi-times" 
+            @click="imagePreviewDialog = false" 
+            class="p-button-text"
+          />
+          <Button 
+            label="Download" 
+            icon="pi pi-download" 
+            @click="downloadFile(previewImageUrl)" 
+            class="p-button-text ml-2"
+          />
+        </div>
+      </template>
+    </Dialog>
+    
+    <!-- File Viewer Dialog -->
+    <Dialog 
+      v-model:visible="filePreviewDialog" 
+      :modal="true" 
+      :dismissableMask="true"
+      :closable="false"
+      :style="{ width: '90vw', maxWidth: '900px', height: '80vh' }"
+      class="file-preview-dialog"
+    >
+      <template #header>
+        <div class="flex items-center">
+          <i class="pi pi-file mr-2 text-primary-500"></i>
+          <span class="font-bold">{{ getAttachmentName(previewFileUrl) }}</span>
+        </div>
+      </template>
+      <div class="file-viewer-container">
+        <iframe 
+          :src="previewFileUrl" 
+          class="file-viewer-frame" 
+          frameborder="0"
+        ></iframe>
+      </div>
+      <template #footer>
+        <div class="flex justify-between w-full">
+          <Button 
+            label="Close" 
+            icon="pi pi-times" 
+            @click="filePreviewDialog = false" 
+            class="p-button-text"
+          />
+          <div>
+            <Button 
+              label="Open in New Tab" 
+              icon="pi pi-external-link" 
+              @click="window.open(previewFileUrl, '_blank')" 
+              class="p-button-text mr-2"
+            />
+            <Button 
+              label="Download" 
+              icon="pi pi-download" 
+              @click="downloadFile(previewFileUrl)" 
+              class="p-button-text"
+            />
+          </div>
+        </div>
+      </template>
+    </Dialog>
   </div>
 </template>
 
@@ -270,6 +420,15 @@ const newChatroomName = ref('');
 const newChatroomDescription = ref('');
 const newChatroomNameError = ref('');
 const selectedResident = ref(null);
+const fileInput = ref(null);
+const selectedFile = ref(null);
+const uploadingAttachment = ref(false);
+const attachmentType = ref('');
+const attachmentPreviewUrl = ref('');
+const imagePreviewDialog = ref(false);
+const previewImageUrl = ref('');
+const filePreviewDialog = ref(false);
+const previewFileUrl = ref('');
 
 // Available residents for the dropdown
 const availableResidents = ref([
@@ -489,6 +648,7 @@ async function fetchMessages(chatroomId) {
         messageUserID,
         messageDescription,
         messageStatus,
+        messageAttachmentUrl,
         created_at
       `)
       .eq('messageChatroomID', chatroomId)
@@ -543,6 +703,7 @@ async function fetchMessages(chatroomId) {
         content: message.messageDescription,
         timestamp: message.created_at,
         read: message.messageStatus === 'read',
+        attachmentUrl: message.messageAttachmentUrl
       };
     });
     
@@ -554,7 +715,7 @@ async function fetchMessages(chatroomId) {
 }
 
 async function sendMessage() {
-  if (!newMessage.value.trim() || !selectedChatroom.value) return;
+  if ((!newMessage.value.trim() && !selectedFile.value) || !selectedChatroom.value) return;
   
   sending.value = true;
   const messageContent = newMessage.value;
@@ -563,6 +724,40 @@ async function sendMessage() {
   try {
     console.log('Sending message to database:', messageContent);
     
+    // Handle file upload if there's a file
+    let attachmentUrl = null;
+    if (selectedFile.value) {
+      uploadingAttachment.value = true;
+      
+      // Create a unique file name using timestamp and original name
+      const timestamp = new Date().getTime();
+      const fileExt = selectedFile.value.name.split('.').pop();
+      const fileName = `${currentUserId.value}_${timestamp}.${fileExt}`;
+      const filePath = `chat-attachments/${fileName}`;
+      
+      // Upload file to Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase
+        .storage
+        .from('chat-attachments')
+        .upload(filePath, selectedFile.value);
+        
+      if (uploadError) {
+        throw uploadError;
+      }
+      
+      // Get public URL
+      const { data: { publicUrl } } = supabase
+        .storage
+        .from('chat-attachments')
+        .getPublicUrl(filePath);
+        
+      attachmentUrl = publicUrl;
+      console.log('File uploaded successfully:', attachmentUrl);
+      
+      // Clear attachment preview
+      clearAttachmentPreview();
+    }
+    
     // Insert the message into the database
     const { data, error } = await supabase
       .from('Message')
@@ -570,7 +765,8 @@ async function sendMessage() {
         messageChatroomID: selectedChatroom.value.id,
         messageUserID: currentUserId.value,
         messageDescription: messageContent,
-        messageStatus: 'sent'
+        messageStatus: 'sent',
+        messageAttachmentUrl: attachmentUrl
       })
       .select();
       
@@ -586,13 +782,14 @@ async function sendMessage() {
       content: messageContent,
       timestamp: data[0].created_at || new Date().toISOString(),
       read: false,
+      attachmentUrl: attachmentUrl
     };
     
     // Add message to the messages array
     messages.value.push(newMessageObj);
     
     // Update the chatroom's last message in the UI
-    selectedChatroom.value.lastMessage = messageContent;
+    selectedChatroom.value.lastMessage = messageContent || 'Attachment';
     selectedChatroom.value.lastMessageTime = newMessageObj.timestamp;
     
     // Scroll to the bottom
@@ -607,6 +804,8 @@ async function sendMessage() {
     alert('Error sending message. Please try again.');
   } finally {
     sending.value = false;
+    uploadingAttachment.value = false;
+    selectedFile.value = null;
   }
 }
 
@@ -669,12 +868,13 @@ function showDateDivider(message, index) {
 }
 
 function getChatroomInitial(chatroom) {
-  return chatroom.name ? chatroom.name.charAt(0).toUpperCase() : '?';
+  if (!chatroom || !chatroom.name) return '?';
+  return chatroom.name.charAt(0).toUpperCase();
 }
 
 function getCurrentUserInitial() {
-  const name = authStore.user?.name || authStore.user?.email;
-  return name ? name.charAt(0).toUpperCase() : 'U';
+  const name = authStore.user?.fullName || authStore.user?.email;
+  return name ? name.charAt(0).toUpperCase() : 'M';
 }
 
 function toggleChatroomMenu(event) {
@@ -735,8 +935,8 @@ async function markChatroomAsRead(chatroomId) {
     
     // Add read receipts
     const readReceipts = unreadMessages.map(msg => ({
-      readReceiptMessageID: msg.messageID,
-      readReceiptUserID: currentUserId.value,
+      messageID: msg.messageID,
+      userID: currentUserId.value,
       read_at: new Date().toISOString()
     }));
     
@@ -1075,8 +1275,8 @@ async function markMessageAsRead(messageId) {
     const { error: receiptError } = await supabase
       .from('Message_Read_Receipts')
       .insert({
-        readReceiptMessageID: messageId,
-        readReceiptUserID: currentUserId.value,
+        messageID: messageId,
+        userID: currentUserId.value,
         read_at: new Date().toISOString()
       });
       
@@ -1118,6 +1318,78 @@ async function updateChatroomWithMessage(messageData) {
     console.error('Error updating chatroom with new message:', error);
   }
 }
+
+function isImageAttachment(url) {
+  if (!url) return false;
+  return /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+}
+
+function getAttachmentName(url) {
+  if (!url) return 'File';
+  try {
+    const path = new URL(url).pathname;
+    const fileName = path.split('/').pop();
+    // Try to decode the filename if it's URL encoded
+    return decodeURIComponent(fileName);
+  } catch (e) {
+    return 'File';
+  }
+}
+
+function showImagePreview(url) {
+  previewImageUrl.value = url;
+  imagePreviewDialog.value = true;
+}
+
+function showFilePreview(url) {
+  previewFileUrl.value = url;
+  filePreviewDialog.value = true;
+}
+
+function downloadFile(url) {
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = getAttachmentName(url);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function handleAttachment() {
+  fileInput.value.click();
+}
+
+function onFileSelected(event) {
+  selectedFile.value = event.target.files[0];
+  if (!selectedFile.value) return;
+  
+  // Determine file type
+  const fileType = selectedFile.value.type;
+  attachmentType.value = fileType.split('/')[0]; // 'image', 'application', etc.
+  
+  // For images, create a preview URL
+  if (fileType.startsWith('image/')) {
+    attachmentPreviewUrl.value = URL.createObjectURL(selectedFile.value);
+  } else {
+    // For non-images, just show the file name
+    attachmentPreviewUrl.value = '';
+  }
+}
+
+function clearAttachmentPreview() {
+  selectedFile.value = null;
+  attachmentPreviewUrl.value = '';
+  attachmentType.value = '';
+}
+
+// Helper function for file size formatting
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
 </script>
 
 <style scoped>
@@ -1157,6 +1429,11 @@ async function updateChatroomWithMessage(messageData) {
   word-wrap: break-word;
 }
 
+:deep(.image-preview-dialog .p-dialog-content) {
+  padding: 1rem;
+  overflow: hidden;
+}
+
 .conversation-container {
   scroll-behavior: smooth;
 }
@@ -1165,5 +1442,22 @@ async function updateChatroomWithMessage(messageData) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.file-viewer-container {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.file-viewer-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+:deep(.file-preview-dialog .p-dialog-content) {
+  padding: 0;
+  overflow: hidden;
 }
 </style>

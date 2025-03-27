@@ -25,6 +25,10 @@ const showNavigation = computed(() => {
 })
 
 const hasBottomNav = computed(() => {
+  // Don't show bottom nav on chatroom page
+  if (route.path === '/resident/chatroom') {
+    return false
+  }
   return showNavigation.value && authStore.isResident
 })
 
