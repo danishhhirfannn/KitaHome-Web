@@ -20,7 +20,7 @@
           aria-label="Go back"
         />
         <div class="flex-1 text-center">
-          <h2 class="text-md font-semibold text-white tracking-wider">Complaints</h2>
+          <h2 class="text-md font-normal text-white tracking-wide">Complaints</h2>
         </div>
         <div class="w-10"></div> <!-- Empty div for balanced spacing -->
       </div>

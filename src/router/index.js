@@ -14,12 +14,15 @@ import residenceManagement from '@/views/management/residenceManagement.vue'
 import financialManagement from '@/views/management/financialManagement.vue'
 import complaintsManagement from '@/views/management/complaintsManagement.vue'
 import communicationManagement from '@/views/management/communicationManagement.vue'
+import announcementsManagement from '@/views/management/announcementsManagement.vue'
 //Resident Views
 import residentDashboard from '@/views/resident/residentDashboard.vue'
 import financialManagementResident from '@/views/resident/financialManagementResident.vue'
 import complaintManagementResident from '@/views/resident/complaintManagementResident.vue'
 import complaintDetails from '@/views/resident/complaintDetails.vue'
 import chatroom from '@/views/resident/chatroom.vue'
+import announcements from '@/views/resident/announcements.vue'
+import profile from '@/views/resident/profile.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -96,6 +99,11 @@ const router = createRouter({
       meta: { requiresAuth: true, roles: ['management'] }
     },
     {
+      path: '/management/announcementsManagement',
+      name: 'announcementsManagement',
+      component: announcementsManagement,
+    },
+    {
       path: '/resident/financialManagementResident',
       name: 'financialManagementResident',
       component: financialManagementResident,
@@ -114,6 +122,16 @@ const router = createRouter({
       path: '/resident/chatroom',
       name: 'chatroom',
       component: chatroom,
+    },
+    {
+      path: '/resident/announcements',
+      name: 'announcements',
+      component: announcements,
+    },
+    {
+      path: '/resident/profile',
+      name: 'profile',
+      component: profile,
     },
   ],
 })

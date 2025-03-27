@@ -876,11 +876,9 @@ function downloadFile(url) {
 // Lifecycle hooks
 onMounted(async () => {
   console.log('Chatroom component mounted, initializing...');
-  await fetchChatroom();
   
+  // Set up real-time subscription for messages
   console.log('Setting up real-time subscription for messages...');
-  
-  // Subscribe to new messages
   const messageSubscription = supabase
     .channel('public:Message')
     .on('postgres_changes', { 
@@ -915,7 +913,8 @@ onMounted(async () => {
           sender: userData?.fullName || userData?.email || 'Management',
           content: messageData.messageDescription,
           timestamp: messageData.created_at,
-          read: false
+          read: false,
+          attachmentUrl: messageData.messageAttachmentUrl
         };
         
         messages.value.push(newMessage);
@@ -931,11 +930,14 @@ onMounted(async () => {
     })
     .subscribe();
     
-  // Clean up subscription on unmount
+  // Register cleanup function before any await statements
   onUnmounted(() => {
     console.log('Chatroom component unmounted, cleaning up subscriptions');
     supabase.removeChannel(messageSubscription);
   });
+  
+  // Now proceed with async operations
+  await fetchChatroom();
 });
 </script>
 

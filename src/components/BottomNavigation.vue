@@ -11,6 +11,11 @@ const navigationItems = [
     text: 'Home',
     to: '/resident/residentDashboard'
   },
+  {
+    icon: 'pi pi-user',
+    text: 'Profile',
+    to: '/resident/profile'
+  },
   { 
     icon: 'pi pi-bell',
     text: 'Notifications',

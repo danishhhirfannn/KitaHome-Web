@@ -20,7 +20,7 @@
           aria-label="Go back"
         />
         <div class="flex-1 text-center">
-          <h2 class="text-md font-semibold text-white tracking-wider">Finance</h2>
+          <h2 class="text-md font-normal text-white tracking-wide">Finance</h2>
         </div>
         <div class="w-10"></div> <!-- Empty div for balanced spacing -->
       </div>
@@ -30,12 +30,13 @@
         <!-- Tab Navigation -->
         <Tabs v-model:value="activeTabIndex" class="mb-6">
           <TabList>
-            <Tab value="0">Pending Invoices</Tab>
-            <Tab value="1">Payment History</Tab>
+            <Tab value="0">Invoices</Tab>
+            <Tab value="1">Transactions</Tab>
             <Tab value="2">Documents</Tab>
           </TabList>
           <TabPanels>
             <TabPanel value="0" class="tab-panel">
+              <h3 class="text-lg font-semibold text-primary-500 pl-1 pb-3 slide-in-left">Upcoming Payment</h3>
               <!-- Empty state -->
               <div v-if="invoices.length === 0" class="flex flex-col items-center justify-center py-12 slide-in-left">
                 <i class="pi pi-check-circle text-gray-300 text-5xl mb-4"></i>
@@ -66,6 +67,7 @@
             </TabPanel>
             
             <TabPanel value="1" class="tab-panel">
+              <h3 class="text-lg font-semibold text-primary-500 pl-1 pb-3 slide-in-left">Payment History</h3>
               <!-- Empty state -->
               <div v-if="transactions.length === 0" class="flex flex-col items-center justify-center py-12 slide-in-left">
                 <i class="pi pi-money-bill text-gray-300 text-5xl mb-4"></i>
@@ -101,7 +103,7 @@
             <TabPanel value="2" class="tab-panel">
               <!-- Header with upload button -->
               <div class="flex justify-between items-center mb-4 slide-in-left">
-                <h3 class="text-sm font-semibold text-gray-800">Financial Documents</h3>
+                <h3 class="text-lg font-semibold text-primary-500 pl-1">Financial Documents</h3>
                 <div>
                   <label for="fileUpload" class="cursor-pointer">
                     <Button 
@@ -261,51 +263,9 @@ const userData = ref({
   unitNumber: ''
 })
 
-const transactions = ref([
-  {
-    id: 'TR001',
-    title: 'Monthly Maintenance Fee',
-    description: 'Payment for June 2024 maintenance',
-    amount: 'RM 150.00',
-    date: '01/06/2024',
-    status: 'Completed'
-  },
-  {
-    id: 'TR002',
-    title: 'Parking Fee',
-    description: 'Additional parking slot fee',
-    amount: 'RM 50.00',
-    date: '15/05/2024',
-    status: 'Completed'
-  },
-  {
-    id: 'TR003',
-    title: 'Special Assessment',
-    description: 'Building facade renovation contribution',
-    amount: 'RM 200.00',
-    date: '05/05/2024',
-    status: 'Completed'
-  }
-])
+const transactions = ref([])
 
-const invoices = ref([
-  {
-    id: 'INV001',
-    title: 'Monthly Maintenance Fee',
-    description: 'Payment for July 2024 maintenance',
-    amount: 'RM 150.00',
-    dueDate: '01/07/2024',
-    dueIn: '5 days'
-  },
-  {
-    id: 'INV002',
-    title: 'Special Assessment',
-    description: 'Swimming pool maintenance fee',
-    amount: 'RM 100.00',
-    dueDate: '15/07/2024',
-    dueIn: '20 days'
-  }
-])
+const invoices = ref([])
 
 const documents = ref([])
 const uploadPreviewVisible = ref(false)

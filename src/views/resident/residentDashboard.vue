@@ -31,7 +31,8 @@
           <h2 class="text-sm font-medium text-white">{{ userData.fullName }}</h2>
           <p class="text-xs text-gray-200">{{ userData.residenceName }}</p>
         </div>
-        <Button icon="pi pi-bars" class="ml-auto" />
+        <Button icon="pi pi-bars" class="ml-auto" @click="toggleMenu" />
+        <Menu ref="menuRef" :model="menuItems" :popup="true" />
       </div>
 
       <!-- Content Section -->
@@ -61,13 +62,15 @@
         <!-- Upcoming Payment Section -->
         <div class="flex justify-between items-center mb-3 slide-in-left" style="animation-delay: 0.1s">
           <h3 class="text-base sm:text-lg font-semibold text-primary">Upcoming Payment</h3>
-          <div label="View All" link class="text-primary-500 text-xs sm:text-sm flex items-center group gap-1">
+          <div label="View All" link class="text-primary-500 text-xs sm:text-sm flex items-center group gap-1" @click="router.push('/resident/financialManagementResident')" style="cursor: pointer;">
             View All
             <i class="pi pi-chevron-right sm:text-xs transition-transform group-hover:translate-x-0.5" style="font-size: 14px"></i>
           </div>
         </div>
         <div class="mb-6 slide-in-left" style="animation-delay: 0.2s">
-          <div class="bg-primary rounded-xl shadow-sm overflow-hidden complaint-card">
+          <div class="bg-primary rounded-xl shadow-sm overflow-hidden complaint-card" 
+               @click="router.push('/resident/financialManagementResident')" 
+               style="cursor: pointer;">
             <div class="p-4">
               <div class="flex flex-col gap-2">
                 <div class="flex justify-between items-start sm:items-center w-full flex-wrap sm:flex-nowrap">
@@ -103,7 +106,9 @@
         <!-- Announcements Section -->
         <div class="flex justify-between items-center mb-3 slide-in-left" style="animation-delay: 0.5s">
           <h3 class="text-base sm:text-lg font-semibold text-primary">Announcements</h3>
-          <div label="View All" link class="text-primary-500 text-xs sm:text-sm flex items-center group gap-1">
+          <div label="View All" link class="text-primary-500 text-xs sm:text-sm flex items-center group gap-1" 
+               @click="router.push('/resident/announcements')" 
+               style="cursor: pointer;">
             View All
             <i class="pi pi-chevron-right sm:text-xs transition-transform group-hover:translate-x-0.5" style="font-size: 14px"></i>
           </div>
@@ -117,11 +122,11 @@
             :showNavigators="false"
             :showIndicators="false"
             v-model:activeIndex="currentAnnouncementIndex"
-            :autoplayInterval="3000"
+            :autoplayInterval="5000"
             class="announcement-carousel"
           >
             <template #item="slotProps">
-              <div class="relative">
+              <div class="relative" @click="viewAnnouncementDetails(slotProps.data)" style="cursor: pointer;">
                 <div class="w-full h-28 relative">
                   <img :src="userData.residencePhoto || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=500&auto=format&fit=crop'" :alt="slotProps.data.title" class="w-full h-40 object-cover rounded-lg blur-[1px] brightness-[0.8]" />
                   <div class="absolute inset-0 bg-black/40 rounded-lg"></div>
@@ -149,23 +154,27 @@
         <!-- Complaints Archive Section -->
         <div class="flex justify-between items-center mb-3 slide-in-left" style="animation-delay: 0.7s">
           <h3 class="text-base sm:text-lg font-semibold text-primary">Complaints Archive</h3>
-          <div label="View All" link class="text-primary-500 text-xs sm:text-sm flex items-center group gap-1">
+          <div label="View All" link class="text-primary-500 text-xs sm:text-sm flex items-center group gap-1" 
+               @click="router.push('/resident/complaintManagementResident')" 
+               style="cursor: pointer;">
             View All
             <i class="pi pi-chevron-right sm:text-xs transition-transform group-hover:translate-x-0.5" style="font-size: 14px"></i>
           </div>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 slide-in-left" style="animation-delay: 0.8s">
-          <div v-for="complaint in complaints" :key="complaint.id" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden complaint-card">
+          <div v-for="complaint in complaints" :key="complaint.id" 
+               class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden complaint-card"
+               @click="complaint.id !== 'No complaints' && complaint.id !== 'Error' ? router.push(`/resident/complaintDetails/${complaint.id}`) : null" 
+               :style="{ cursor: complaint.id !== 'No complaints' && complaint.id !== 'Error' ? 'pointer' : 'default' }">
             <div class="flex flex-col h-full">
               <div class="flex items-center px-4 py-3 border-b border-gray-100">
                 <i class="pi pi-exclamation-circle mr-2 text-primary"></i>
-                <span class="text-xs font-medium tracking-wide text-primary">{{ complaint.id }}</span>
+                <span class="text-xs font-medium tracking-wide text-primary truncate max-w-[180px]">{{ truncateId(complaint.id) }}</span>
                 <div :class="[
                   'ml-auto px-2 py-0.5 rounded-full text-[10px] font-medium',
-                  complaint.status === 'In-review' ? 'bg-blue-100 text-blue-700' : 
-                  complaint.status === 'Resolved' ? 'bg-green-100 text-green-700' : 
-                  complaint.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' : 
-                  'bg-gray-100 text-gray-700'
+                  complaint.id === 'No complaints' ? 'bg-gray-100 text-gray-500' :
+                  complaint.id === 'Error' ? 'bg-red-100 text-red-700' :
+                  getStatusClass(complaint)
                 ]">
                   {{ complaint.status }}
                 </div>
@@ -185,6 +194,87 @@
       </div>
     </div>
   </div>
+
+  <ConfirmDialog />
+  
+  <!-- Announcement Details Dialog -->
+  <Dialog 
+    v-model:visible="announcementDialog" 
+    :modal="true"
+    :header="false"
+    :showHeader="false"
+    :style="{width: '35rem', maxWidth: '95vw'}"
+    :breakpoints="{'960px': '90vw', '640px': '95vw'}"
+    class="shadow-xl rounded-lg overflow-hidden announcement-dialog"
+    :closable="true"
+  >
+    <div v-if="selectedAnnouncement" class="p-0">
+      <!-- Header with close button -->
+      <div class="flex justify-between items-center p-4 border-b border-gray-100">
+        <h3 class="text-lg font-semibold text-gray-800">Announcement</h3>
+        <Button 
+          icon="pi pi-times" 
+          class="p-button-rounded p-button-text p-button-sm" 
+          @click="announcementDialog = false"
+          aria-label="Close" 
+        />
+      </div>
+      
+      <!-- Post header with author info -->
+      <div class="p-4 flex items-center">
+        <div class="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold text-lg">
+          {{ selectedAnnouncement.author.charAt(0).toUpperCase() }}
+        </div>
+        <div class="ml-3">
+          <p class="font-medium text-gray-800">{{ selectedAnnouncement.author }}</p>
+          <p class="text-xs text-gray-500 flex items-center">
+            {{ selectedAnnouncement.date }}
+          </p>
+        </div>
+      </div>
+      
+      <!-- Post title and content -->
+      <div class="px-4 py-2">
+        <h1 class="text-lg font-semibold text-gray-900 mb-3">{{ selectedAnnouncement.title }}</h1>
+        <p class="text-gray-700 whitespace-pre-wrap mb-4">{{ selectedAnnouncement.description }}</p>
+      </div>
+      
+      <!-- Attachment Section (if available) -->
+      <div v-if="selectedAnnouncement.attachmentUrl" class="px-4 pb-4">
+        <!-- Preview for image attachments -->
+        <div v-if="isImageAttachment(selectedAnnouncement.attachmentUrl)" class="border border-gray-200 rounded-lg overflow-hidden mb-2">
+          <img :src="selectedAnnouncement.attachmentUrl" alt="Attachment" class="max-h-80 object-contain w-full" />
+        </div>
+        <!-- Non-image attachment -->
+        <div v-else class="border border-gray-200 rounded-lg p-4 flex items-center">
+          <div class="rounded-full bg-gray-100 w-10 h-10 flex items-center justify-center mr-3">
+            <i class="pi pi-file text-primary-600 text-lg"></i>
+          </div>
+          <div class="flex-1">
+            <p class="text-sm font-medium text-gray-700">Document Attachment</p>
+            <p class="text-xs text-gray-500">Click to download</p>
+          </div>
+          <Button
+            icon="pi pi-download"
+            class="p-button-rounded p-button-text"
+            @click="window.open(selectedAnnouncement.attachmentUrl, '_blank')"
+            aria-label="Download"
+          />
+        </div>
+      </div>
+      
+      <!-- Footer with interaction buttons -->
+      <div class="px-4 py-3 border-t border-gray-100 flex justify-end">
+        <Button 
+          label="Download" 
+          v-if="selectedAnnouncement.attachmentUrl"
+          icon="pi pi-download" 
+          class="p-button-text p-button-sm"
+          @click="window.open(selectedAnnouncement.attachmentUrl, '_blank')"
+        />
+      </div>
+    </div>
+  </Dialog>
 </template>
 
 <script setup>
@@ -200,6 +290,9 @@ import Tag from 'primevue/tag'
 import userAvatar from '@/assets/user-avatar.jpg'
 import SmallHomeLogo from '@/assets/SmallHome_Logo.png' // Add logo import
 import Carousel from 'primevue/carousel'
+import ConfirmDialog from 'primevue/confirmdialog'
+import Dialog from 'primevue/dialog'
+import Menu from 'primevue/menu' // Add Menu import
 
 const authStore = useAuthStore()
 const isVerified = ref(false)
@@ -253,8 +346,14 @@ onMounted(async () => {
         
         // Fetch upcoming payments
         await fetchUpcomingPayments(userData1.userID)
+        
+        // Fetch user complaints
+        await fetchUserComplaints(userData1.userID)
       }
     }
+    
+    // Fetch announcements
+    await fetchAnnouncements()
     
     // Wait for both the API calls and minimum loading time
     await loadingPromise;
@@ -345,50 +444,146 @@ const fetchUpcomingPayments = async (userId) => {
 
 const currentAnnouncementIndex = ref(0)
 
-const announcements = ref([
-  {
-    title: 'Victoria Community Meet Up',
-    author: 'Ng Lee Hooi (Admin)',
-    description: 'All residents of Victoria Heights are cordially invited to our 3rd community meet up on the 2nd of December, 8:00 PM at the Community Hall (Level 3)',
-    date: '25 Nov 2023'
-  },
-  {
-    title: 'Building Maintenance Notice',
-    author: 'Maintenance Team',
-    description: 'The water supply will be temporarily suspended on July 15th from 10:00 AM to 2:00 PM due to scheduled maintenance work on the main pipes.',
-    date: '20 Nov 2023'
-  },
-  {
-    title: 'New Security Measures',
-    author: 'Security Department',
-    description: 'Starting next week, all visitors must register at the guardhouse and obtain a visitor pass. Please inform your guests about this new procedure.',
-    date: '15 Nov 2023'
-  }
-])
+const announcements = ref([])
 
-const complaints = ref([
-  {
-    id: 'WR004-ABCG-210424',
-    title: 'Water leak on 4th floor',
-    description: 'The water pipe is leaking causing the floor to be extremely wet. Maintenance staff has been notified and will check the issue as soon as possible.',
-    status: 'In-review',
-    submittedOn: '29/11/24 at 2:56 PM'
-  },
-  {
-    id: 'WR002-DEFJ-210422',
-    title: 'Elevator malfunction',
-    description: 'The elevator on Block A has been stopping at random floors without being called. This is causing inconvenience for all residents.',
-    status: 'Pending',
-    submittedOn: '28/11/24 at 9:12 AM'
-  },
-  {
-    id: 'WR001-HIJK-210419',
-    title: 'Broken door handle',
-    description: 'The main entrance door handle is loose and might fall off completely. Needs immediate repair to ensure security.',
-    status: 'Resolved',
-    submittedOn: '25/11/24 at 11:30 AM'
+// Function to fetch announcements
+const fetchAnnouncements = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('Announcement')
+      .select(`
+        announcementID,
+        announcementTitle,
+        announcementDescription,
+        announcementStatus,
+        announcementVisibility,
+        announcementAttachmentUrl,
+        announcementUserID,
+        created_at,
+        User(fullName)
+      `)
+      .eq('announcementStatus', 'Published')
+      .eq('announcementVisibility', 'Public')
+      .order('created_at', { ascending: false })
+      .limit(5)
+    
+    if (error) throw error
+    
+    if (data && data.length > 0) {
+      announcements.value = data.map(announcement => {
+        // Format the date
+        const date = new Date(announcement.created_at)
+        const formattedDate = `${date.getDate()}/${date.getMonth()+1}/${date.getFullYear()}`
+        
+        return {
+          id: announcement.announcementID,
+          title: announcement.announcementTitle,
+          description: announcement.announcementDescription,
+          author: announcement.User?.fullName || 'Admin',
+          date: formattedDate,
+          attachmentUrl: announcement.announcementAttachmentUrl
+        }
+      })
+    } else {
+      // Add a default announcement if none are found
+      announcements.value = [{
+        id: 'no-announcements',
+        title: 'No Announcements',
+        description: 'There are currently no announcements.',
+        author: 'System',
+        date: new Date().toLocaleDateString()
+      }]
+    }
+  } catch (error) {
+    console.error('Error fetching announcements:', error)
+    // Add a fallback announcement in case of error
+    announcements.value = [{
+      id: 'error',
+      title: 'Error Loading Announcements',
+      description: 'Could not load announcements. Please try again later.',
+      author: 'System',
+      date: new Date().toLocaleDateString()
+    }]
   }
-])
+}
+
+const complaints = ref([])
+
+// Function to fetch user complaints
+const fetchUserComplaints = async (userId) => {
+  try {
+    const { data, error } = await supabase
+      .from('Complaint')
+      .select('complaintID, complaintTitle, complaintDescription, complaintPriority, complaintImageUrl, created_at, isResolved, isPending')
+      .eq('complaintUserID', userId)
+      .order('created_at', { ascending: false })
+      .limit(4)
+    
+    if (error) throw error
+    
+    if (data && data.length > 0) {
+      complaints.value = data.map(complaint => {
+        // Format the date
+        const date = new Date(complaint.created_at)
+        const formattedDate = `${date.getDate()}/${date.getMonth()+1}/${date.getFullYear()} at ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')} ${date.getHours() >= 12 ? 'PM' : 'AM'}`
+        
+        return {
+          id: complaint.complaintID,
+          title: complaint.complaintTitle,
+          description: complaint.complaintDescription,
+          status: getStatusText(complaint),
+          submittedOn: formattedDate,
+          priority: complaint.complaintPriority,
+          imageUrl: complaint.complaintImageUrl,
+          isResolved: complaint.isResolved,
+          isPending: complaint.isPending
+        }
+      })
+    } else {
+      complaints.value = [{
+        id: 'No complaints',
+        title: 'No complaints submitted',
+        description: 'You have not submitted any complaints yet.',
+        status: 'N/A',
+        submittedOn: '-',
+        priority: 'N/A',
+        imageUrl: null
+      }]
+    }
+  } catch (error) {
+    console.error('Error fetching user complaints:', error)
+    complaints.value = [{
+      id: 'Error',
+      title: 'Error loading complaints',
+      description: 'There was an error loading your complaints. Please try again later.',
+      status: 'Error',
+      submittedOn: '-',
+      priority: 'N/A',
+      imageUrl: null
+    }]
+  }
+}
+
+// Function to get status text based on isResolved and isPending fields
+const getStatusText = (complaint) => {
+  if (complaint.isResolved) return 'Resolved'
+  if (complaint.isPending) return 'Reviewed'
+  return 'Submitted'
+}
+
+// Function to get appropriate status class
+const getStatusClass = (complaint) => {
+  if (complaint.isResolved) return 'bg-green-100 text-green-700'
+  if (complaint.isPending) return 'bg-blue-100 text-blue-700'
+  return 'bg-yellow-100 text-yellow-700'
+}
+
+// Function to truncate complaint ID
+const truncateId = (id) => {
+  if (!id) return ''
+  if (id.length <= 20) return id
+  return id.slice(0, 20) + '...'
+}
 
 // Function to handle quick action button clicks
 const router = useRouter()
@@ -400,6 +595,55 @@ const handleQuickAction = (type) => {
   } else if (type === 'message') {
     router.push('/resident/chatroom')
   }
+}
+
+// Function to check if the attachment is an image
+const isImageAttachment = (url) => {
+  if (!url) return false
+  
+  const extension = url.split('.').pop()?.toLowerCase()
+  const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']
+  return imageExtensions.includes(extension)
+}
+
+// Function to view announcement details
+const viewAnnouncementDetails = (announcement) => {
+  selectedAnnouncement.value = announcement
+  announcementDialog.value = true
+}
+
+const announcementDialog = ref(false)
+const selectedAnnouncement = ref(null)
+
+// Menu for the top-right hamburger button
+const menuRef = ref()
+const menuItems = ref([
+  {
+    label: 'Profile',
+    icon: 'pi pi-user',
+    command: () => router.push('/resident/profile')
+  },
+  {
+    label: 'Settings',
+    icon: 'pi pi-cog',
+    command: () => console.log('Settings clicked')
+  },
+  {
+    separator: true
+  },
+  {
+    label: 'Logout',
+    icon: 'pi pi-sign-out',
+    command: async () => {
+      await authStore.logout()
+      router.push('/')
+    }
+  }
+])
+
+// Function to toggle menu
+const toggleMenu = (event) => {
+  menuRef.value.toggle(event)
 }
 </script>
 
@@ -732,5 +976,19 @@ const handleQuickAction = (type) => {
 :deep(.payment-card:hover) {
   transform: translateY(-2px);
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+}
+
+/* Announcement dialog styles */
+:deep(.announcement-dialog) {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+:deep(.announcement-dialog .p-dialog-content) {
+  padding: 0;
+}
+
+:deep(.announcement-dialog .p-dialog-header) {
+  display: none;
 }
 </style>

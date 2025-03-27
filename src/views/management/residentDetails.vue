@@ -296,6 +296,71 @@
                   </ul>
                 </div>
               </div>
+
+              <!-- Add Documents Section -->
+              <div v-if="activeSection === 'Documents'" :key="'documents'" class="w-full">
+                <div class="space-y-4">
+                  <div class="flex justify-between items-center">
+                    <h4 class="text-lg font-semibold text-gray-900">Financial Documents</h4>
+                    <div>
+                      <label for="fileUpload" class="cursor-pointer">
+                        <Button 
+                          icon="pi pi-upload" 
+                          label="Upload Document" 
+                          class="p-button-sm p-button-outlined"
+                          type="button"
+                          @click="triggerFileInput"
+                        />
+                        <input 
+                          id="fileUpload" 
+                          type="file" 
+                          ref="fileInputRef"
+                          @change="handleFileUpload" 
+                          class="hidden" 
+                          accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.png"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                  
+                  <!-- Empty state -->
+                  <div v-if="documents.length === 0" class="flex flex-col items-center justify-center py-12">
+                    <i class="pi pi-file text-gray-300 text-5xl mb-4"></i>
+                    <h4 class="text-gray-500 font-medium text-sm mb-2">No documents found</h4>
+                    <p class="text-gray-400 text-xs text-center max-w-xs">Upload financial documents like receipts, statements, or contracts for easy access.</p>
+                  </div>
+                  
+                  <!-- Documents List -->
+                  <div v-else class="space-y-3">
+                    <div 
+                      v-for="document in documents" 
+                      :key="document.documentID" 
+                      class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+                      @click="openDocument(document)"
+                    >
+                      <div class="p-4 flex items-center">
+                        <!-- File icon based on type -->
+                        <div class="mr-3">
+                          <i 
+                            :class="[
+                              'pi text-xl', 
+                              getFileIconClass(document)
+                            ]"
+                          ></i>
+                        </div>
+                        
+                        <!-- Document info -->
+                        <div class="flex-1">
+                          <h4 class="text-sm font-semibold text-gray-800 mb-1">{{ getDocumentName(document) }}</h4>
+                          <div class="flex justify-between items-center">
+                            <span class="text-xs text-gray-500">{{ formatDate(document.created_at) }}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </TransitionGroup>
           </div>
         </div>
@@ -338,6 +403,69 @@
       </div>
     </template>
   </Dialog>
+
+  <!-- File upload preview modal -->
+  <Dialog 
+    v-model:visible="uploadPreviewVisible" 
+    header="Upload Document" 
+    :modal="true" 
+    :dismissableMask="true" 
+    :style="{width: '90vw', maxWidth: '700px'}"
+  >
+    <div class="upload-preview-container">
+      <!-- File info -->
+      <div class="flex items-center p-3 bg-gray-50 rounded-lg mb-4">
+        <i class="pi pi-file text-xl text-primary mr-3"></i>
+        <div class="flex-1">
+          <p class="font-medium text-sm">{{ uploadFile?.name }}</p>
+          <p class="text-xs text-gray-500">{{ formatFileSize(uploadFile?.size) }}</p>
+        </div>
+      </div>
+      
+      <!-- File name input -->
+      <div class="mb-4">
+        <label for="fileName" class="block text-sm font-medium text-gray-700 mb-1">File Name</label>
+        <div class="relative">
+          <input 
+            id="fileName" 
+            v-model="customFileName" 
+            type="text" 
+            class="w-full p-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary" 
+            placeholder="Enter a custom file name"
+          />
+          <div class="text-xs text-gray-500 mt-1">
+            The file will be saved with this name. File extension will be added automatically.
+          </div>
+        </div>
+      </div>
+      
+      <!-- Preview if possible -->
+      <div v-if="uploadPreviewUrl" class="mb-4">
+        <img 
+          v-if="uploadPreviewUrl && (uploadFile?.type.includes('image'))"
+          :src="uploadPreviewUrl" 
+          alt="Upload preview" 
+          class="max-w-full max-h-[300px] mx-auto border rounded"
+        />
+      </div>
+      
+      <!-- Upload button -->
+      <div class="flex justify-end">
+        <Button 
+          label="Cancel" 
+          class="p-button-text mr-2" 
+          @click="cancelUpload"
+        />
+        <Button 
+          label="Upload Document" 
+          icon="pi pi-upload" 
+          class="p-button-primary" 
+          @click="uploadDocument"
+          :loading="isUploading"
+        />
+      </div>
+    </div>
+  </Dialog>
 </template>
 
 <script setup>
@@ -358,6 +486,14 @@ const user = ref(null)
 const showDeclineDialog = ref(false)
 const declineReason = ref('')
 const toast = useToast()
+
+const documents = ref([])
+const uploadPreviewVisible = ref(false)
+const uploadFile = ref(null)
+const uploadPreviewUrl = ref(null)
+const isUploading = ref(false)
+const fileInputRef = ref(null)
+const customFileName = ref('')
 
 const fetchUserDetails = async () => {
   try {
@@ -391,7 +527,7 @@ const fetchUserDetails = async () => {
 }
 
 const activeSection = ref('Identity')
-const sections = ['Identity', 'Finance', 'Complaints']
+const sections = ['Identity', 'Finance', 'Complaints', 'Documents']
 
 const viewDocument = (url) => {
   window.open(url, '_blank')
@@ -458,8 +594,288 @@ const confirmDecline = async () => {
   await updateVerificationStatus('decline', declineReason.value)
 }
 
+// Document related functions
+const triggerFileInput = () => {
+  // Directly trigger the file input click
+  if (fileInputRef.value) {
+    fileInputRef.value.click()
+  }
+}
+
+const handleFileUpload = (event) => {
+  console.log('File input changed')
+  const file = event.target.files[0]
+  if (!file) {
+    console.log('No file selected')
+    return
+  }
+  
+  console.log('File selected:', file.name, file.type, file.size)
+  uploadFile.value = file
+  
+  // Set initial custom file name (without extension)
+  const fileNameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name
+  customFileName.value = fileNameWithoutExt
+  
+  // Create preview URL for images
+  if (file.type.includes('image')) {
+    uploadPreviewUrl.value = URL.createObjectURL(file)
+  } else {
+    uploadPreviewUrl.value = null
+  }
+  
+  uploadPreviewVisible.value = true
+}
+
+const formatFileSize = (bytes) => {
+  if (!bytes) return '0 Bytes'
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
+
+const cancelUpload = () => {
+  uploadFile.value = null
+  uploadPreviewUrl.value = null
+  uploadPreviewVisible.value = false
+  customFileName.value = ''
+}
+
+const uploadDocument = () => {
+  if (!uploadFile.value) {
+    console.error('No file to upload')
+    return
+  }
+  
+  if (!customFileName.value.trim()) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Please enter a file name',
+      life: 3000
+    })
+    return
+  }
+  
+  isUploading.value = true
+  console.log('Starting upload process...')
+  
+  // Use Promise chain instead of async/await
+  supabase.auth.getUser()
+    .then(({ data: { user: adminUser } }) => {
+      if (!adminUser) {
+        throw new Error('User not authenticated')
+      }
+      
+      console.log('Uploading document for user:', user.value.userID)
+      
+      // Create file path with custom name
+      const fileExt = uploadFile.value.name.split('.').pop()
+      const safeFileName = customFileName.value
+        .replace(/[^a-zA-Z0-9_\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF -]/g, '') // Remove special chars except dash and space
+        .trim()
+      
+      const uniqueId = Math.random().toString(36).substring(2, 8)
+      const fileName = `${uniqueId}_${safeFileName}.${fileExt}`
+      const filePath = `${user.value.userID}/${fileName}`
+      
+      console.log('Uploading to path:', filePath)
+      
+      // Upload to storage
+      return supabase.storage
+        .from('finance-documents')
+        .upload(filePath, uploadFile.value)
+        .then(({ data: uploadData, error: uploadError }) => {
+          if (uploadError) throw uploadError
+          
+          console.log('Upload successful:', uploadData)
+          
+          // Get public URL
+          const { data: urlData } = supabase.storage
+            .from('finance-documents')
+            .getPublicUrl(filePath)
+          
+          const publicUrl = urlData.publicUrl
+          console.log('Public URL:', publicUrl)
+          
+          // Save reference in database with custom name
+          return supabase
+            .from('Finance_Documents')
+            .insert({
+              documentUserID: user.value.userID,
+              documentResidenceID: user.value.residenceID,
+              documentUrl: publicUrl,
+              documentName: safeFileName + '.' + fileExt // Store the custom name in database
+            })
+        })
+    })
+    .then(({ data: dbData, error: dbError }) => {
+      if (dbError) throw dbError
+      
+      console.log('Database entry created:', dbData)
+      
+      // Refresh documents list
+      fetchDocuments()
+      
+      toast.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'Document uploaded successfully',
+        life: 3000
+      })
+      
+      // Close modal and reset
+      cancelUpload()
+    })
+    .catch(error => {
+      console.error('Error uploading document:', error)
+      
+      // More specific error message based on the error
+      let errorMessage = 'Failed to upload document'
+      
+      if (error.message?.includes('storage') || error.message?.includes('bucket')) {
+        errorMessage = 'Storage error: Please ensure the bucket exists and is properly configured'
+      } else if (error.message?.includes('permission') || error.message?.includes('access')) {
+        errorMessage = 'Permission denied: You don\'t have access to upload files'
+      } else if (error.message?.includes('size')) {
+        errorMessage = 'File too large: Please choose a smaller file'
+      }
+      
+      toast.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: errorMessage,
+        life: 5000
+      })
+    })
+    .finally(() => {
+      isUploading.value = false
+      // Ensure the file input is reset
+      if (fileInputRef.value) {
+        fileInputRef.value.value = ''
+      }
+    })
+}
+
+const fetchDocuments = () => {
+  if (!user.value || !user.value.userID) return
+  
+  supabase
+    .from('Finance_Documents')
+    .select('*')
+    .eq('documentUserID', user.value.userID)
+    .order('created_at', { ascending: false })
+    .then(({ data, error }) => {
+      if (error) throw error
+      
+      console.log('Fetched documents:', data)
+      if (data && data.length > 0) {
+        console.log('First document sample:', data[0])
+        console.log('Document structure:', Object.keys(data[0]))
+      }
+      
+      documents.value = data || []
+    })
+    .catch(error => {
+      console.error('Error fetching documents:', error)
+      toast.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Failed to load documents',
+        life: 3000
+      })
+    })
+}
+
+const openDocument = (document) => {
+  const url = getDocumentUrl(document);
+  if (url) {
+    console.log('Opening document in new tab:', url);
+    window.open(url, '_blank');
+  } else {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Cannot open document: URL not found',
+      life: 3000
+    });
+  }
+}
+
+const getDocumentUrl = (doc) => {
+  if (!doc) return '';
+  return doc.documentUrl || '';
+}
+
+const getDocumentName = (doc) => {
+  if (!doc) return 'Unknown file';
+  
+  // If document has a custom name stored, use it directly
+  if (doc.documentName) {
+    return doc.documentName;
+  }
+  
+  // Otherwise fall back to extracting from URL
+  const url = getDocumentUrl(doc);
+  return getDocumentFileName(url);
+}
+
+const getDocumentFileName = (url) => {
+  if (!url) return 'Unknown file'
+  
+  // Extract filename from URL
+  const urlParts = url.split('/')
+  let fileName = urlParts[urlParts.length - 1]
+  
+  // Remove random string prefix if present
+  const parts = fileName.split('_')
+  if (parts.length > 1 && parts[0].length <= 15) {
+    fileName = parts.slice(1).join('_')
+  }
+  
+  // Remove timestamp if present
+  const timestampMatch = fileName.match(/^\d+_(.+)$/)
+  if (timestampMatch) {
+    fileName = timestampMatch[1]
+  }
+  
+  // Decode URI components
+  try {
+    fileName = decodeURIComponent(fileName)
+  } catch (e) {
+    // If decoding fails, use the original
+  }
+  
+  return fileName
+}
+
+const getFileIconClass = (doc) => {
+  const url = getDocumentUrl(doc);
+  if (!url) return 'pi-file text-gray-500';
+  
+  if (url.includes('.pdf')) return 'pi-file-pdf text-red-500';
+  if (url.includes('.doc')) return 'pi-file-word text-blue-500';
+  if (url.includes('.xls')) return 'pi-file-excel text-green-500';
+  if (url.includes('.jpg') || url.includes('.png')) return 'pi-image text-purple-500';
+  
+  return 'pi-file text-gray-500';
+}
+
+const formatDate = (dateString) => {
+  const date = new Date(dateString)
+  return date.toLocaleDateString('en-MY', { 
+    year: 'numeric', 
+    month: 'short', 
+    day: 'numeric'
+  })
+}
+
 onMounted(() => {
   fetchUserDetails()
+    .then(() => {
+      fetchDocuments()
+    })
 })
 </script>
 

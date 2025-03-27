@@ -21,6 +21,7 @@ const managementLinks = [
   { text: 'Finance', to: '/management/financialManagement', icon: 'pi pi-wallet' },
   { text: 'Complaints', to: '/management/complaintsManagement', icon: 'pi pi-flag' },
   { text: 'Communication', to: '/management/communicationManagement', icon: 'pi pi-comments' },
+  { text: 'Announcements', to: '/management/announcementsManagement', icon: 'pi pi-megaphone' },
 ]
 
 const handleLogout = async () => {
