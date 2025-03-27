@@ -394,7 +394,7 @@ const complaints = ref([
 const router = useRouter()
 const handleQuickAction = (type) => {
   if (type === 'finance') {
-    router.push('/resident/financialManagement')
+    router.push('/resident/financialManagementResident')
   } else if (type === 'complaint') {
     router.push('/resident/complaintManagementResident')
   } else if (type === 'message') {

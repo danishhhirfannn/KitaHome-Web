@@ -14,7 +14,7 @@ const navigationItems = [
   { 
     icon: 'pi pi-bell',
     text: 'Notifications',
-    to: '/resident/notifications'
+    to: '/resident/residentDashboard'
   }
 ]
 
