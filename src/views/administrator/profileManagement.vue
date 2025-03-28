@@ -1,9 +1,19 @@
 <template>
   <Toast position="top-right" />
   <div class="p-8">
-    <div class="mb-6">
-      <h1 class="text-2xl font-bold text-[#4D5BBF]">Profile Management</h1>
-      <p class="text-gray-600 mt-2">Manage all user profiles and their verification status</p>
+    <div class="mb-6 flex justify-between items-center">
+      <div>
+        <h1 class="text-2xl font-bold text-[#4D5BBF]">Profile Management</h1>
+        <p class="text-gray-600 mt-2">Manage all user profiles and their verification status</p>
+      </div>
+      <Button
+        icon="pi pi-plus" 
+        label="Create New User"
+        raised
+        class="text-sm"
+        @click="openNewUserDialog"
+        tooltip="Create a new user account"
+        tooltipOptions="left" />
     </div>
 
     <div class="card bg-white rounded-lg shadow border border-gray-200">
@@ -414,6 +424,119 @@
       </div>
     </template>
   </Dialog>
+
+  <Dialog 
+    v-model:visible="userFormDialog" 
+    :modal="true"
+    header="Create New User"
+    :style="{width: '40rem'}"
+    :breakpoints="{'960px': '75vw', '640px': '90vw'}"
+    class="shadow-lg rounded-lg overflow-hidden"
+    :closable="true"
+  >
+    <div class="p-1 space-y-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="mb-2">
+          <label for="fullName" class="block text-sm font-medium text-gray-700 mb-1">Full Name*</label>
+          <InputText id="fullName" v-model="userForm.fullName" class="w-full" />
+        </div>
+
+        <div class="mb-2">
+          <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email*</label>
+          <InputText id="email" v-model="userForm.email" class="w-full" type="email" />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="mb-2">
+          <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+          <InputText id="phone" v-model="userForm.phone" class="w-full" />
+        </div>
+
+        <div class="mb-2">
+          <label for="nationality" class="block text-sm font-medium text-gray-700 mb-1">Nationality</label>
+          <InputText id="nationality" v-model="userForm.userNationality" class="w-full" />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="mb-2">
+          <label for="identificationNumber" class="block text-sm font-medium text-gray-700 mb-1">ID Number</label>
+          <InputText id="identificationNumber" v-model="userForm.userIdentificationNumber" class="w-full" />
+        </div>
+
+        <div class="mb-2">
+          <label for="residence" class="block text-sm font-medium text-gray-700 mb-1">Residence</label>
+          <Dropdown id="residence" v-model="userForm.residenceID" :options="residences" optionLabel="residenceName" 
+                   optionValue="residenceID" placeholder="Select Residence" class="w-full" />
+        </div>
+      </div>
+
+      <div class="mb-2">
+        <label for="unitNumber" class="block text-sm font-medium text-gray-700 mb-1">Unit Number</label>
+        <InputText id="unitNumber" v-model="userForm.unitNumber" class="w-full" />
+      </div>
+
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">User Roles</label>
+        <div class="flex flex-wrap gap-4">
+          <div class="flex items-center">
+            <Checkbox id="isResident" v-model="userForm.isResident" :binary="true" />
+            <label for="isResident" class="ml-2 text-sm text-gray-700">Resident</label>
+          </div>
+          <div class="flex items-center">
+            <Checkbox id="isManagement" v-model="userForm.isManagement" :binary="true" />
+            <label for="isManagement" class="ml-2 text-sm text-gray-700">Management</label>
+          </div>
+          <div class="flex items-center">
+            <Checkbox id="isAdmin" v-model="userForm.isAdmin" :binary="true" />
+            <label for="isAdmin" class="ml-2 text-sm text-gray-700">Admin</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Verification Status</label>
+        <div class="flex gap-4">
+          <div class="flex items-center">
+            <RadioButton id="pending" v-model="userForm.verificationStatus" value="pending" />
+            <label for="pending" class="ml-2 text-sm text-gray-700">Pending</label>
+          </div>
+          <div class="flex items-center">
+            <RadioButton id="verified" v-model="userForm.verificationStatus" value="verified" />
+            <label for="verified" class="ml-2 text-sm text-gray-700">Verified</label>
+          </div>
+          <div class="flex items-center">
+            <RadioButton id="declined" v-model="userForm.verificationStatus" value="declined" />
+            <label for="declined" class="ml-2 text-sm text-gray-700">Declined</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-2" v-if="userForm.verificationStatus === 'declined'">
+        <label for="declineReason" class="block text-sm font-medium text-gray-700 mb-1">Decline Reason</label>
+        <InputTextarea id="declineReason" v-model="userForm.declineReason" rows="2" class="w-full" />
+      </div>
+    </div>
+
+    <template #footer>
+      <div class="py-3 flex justify-end gap-2">
+        <Button 
+          label="Cancel" 
+          icon="pi pi-times" 
+          class="p-button-text text-sm"
+          @click="userFormDialog = false"
+        />
+        <Button 
+          label="Save" 
+          icon="pi pi-save" 
+          class="text-sm"
+          @click="saveUser"
+          :loading="savingUser"
+        />
+      </div>
+    </template>
+  </Dialog>
 </template>
 
 <script setup>
@@ -428,6 +551,9 @@ import SelectButton from 'primevue/selectbutton'
 import Toast from 'primevue/toast'
 import { useToast } from 'primevue/usetoast'
 import InputTextarea from 'primevue/textarea'
+import Dropdown from 'primevue/dropdown'
+import Checkbox from 'primevue/checkbox'
+import RadioButton from 'primevue/radiobutton'
 
 // Move toast initialization here
 const toast = useToast()
@@ -446,6 +572,146 @@ const options = ref(['Identity', 'Finance', 'Complaints'])
 
 const showDeclineDialog = ref(false)
 const declineReason = ref('')
+
+// New user form dialog
+const userFormDialog = ref(false)
+const savingUser = ref(false)
+const residences = ref([])
+const userForm = ref({
+  fullName: '',
+  email: '',
+  phone: '',
+  userNationality: '',
+  userIdentificationNumber: '',
+  residenceID: null,
+  unitNumber: '',
+  isResident: true,
+  isManagement: false,
+  isAdmin: false,
+  verificationStatus: 'pending',
+  declineReason: ''
+})
+
+const resetUserForm = () => {
+  userForm.value = {
+    fullName: '',
+    email: '',
+    phone: '',
+    userNationality: '',
+    userIdentificationNumber: '',
+    residenceID: null,
+    unitNumber: '',
+    isResident: true,
+    isManagement: false,
+    isAdmin: false,
+    verificationStatus: 'pending',
+    declineReason: ''
+  }
+}
+
+const openNewUserDialog = () => {
+  resetUserForm()
+  userFormDialog.value = true
+}
+
+const fetchResidences = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('Residence')
+      .select('residenceID, residenceName')
+      .order('residenceName')
+
+    if (error) throw error
+    residences.value = data
+  } catch (error) {
+    console.error('Error fetching residences:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to fetch residences',
+      life: 3000
+    })
+  }
+}
+
+const saveUser = async () => {
+  if (!userForm.value.fullName || !userForm.value.email) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Warning',
+      detail: 'Full name and email are required',
+      life: 3000
+    })
+    return
+  }
+
+  try {
+    savingUser.value = true
+
+    // Map form status to db fields
+    const isVerified = userForm.value.verificationStatus === 'verified'
+    const isDeclined = userForm.value.verificationStatus === 'declined'
+
+    // Create user object
+    const newUser = {
+      fullName: userForm.value.fullName,
+      email: userForm.value.email,
+      phone: userForm.value.phone,
+      userNationality: userForm.value.userNationality,
+      userIdentificationNumber: userForm.value.userIdentificationNumber,
+      residenceID: userForm.value.residenceID,
+      unitNumber: userForm.value.unitNumber,
+      isResident: userForm.value.isResident,
+      isManagement: userForm.value.isManagement,
+      isAdmin: userForm.value.isAdmin,
+      isVerified: isVerified,
+      isDeclined: isDeclined,
+      declineReason: isDeclined ? userForm.value.declineReason : null
+    }
+
+    // Insert user
+    const { data, error } = await supabase
+      .from('User')
+      .insert(newUser)
+      .select(`
+        *,
+        Residence:residenceID (
+          residenceName,
+          displayPhotoUrl
+        )
+      `)
+
+    if (error) throw error
+
+    // Add to local state
+    users.value.unshift(data[0])
+
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'New user has been created',
+      life: 3000
+    })
+
+    userFormDialog.value = false
+  } catch (error) {
+    console.error('Error creating user:', error)
+    
+    let errorMessage = 'Failed to create user'
+    if (error.code === '23505') {
+      errorMessage = 'A user with this email already exists'
+    }
+    
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: errorMessage,
+      life: 3000
+    })
+  } finally {
+    savingUser.value = false
+  }
+}
 
 const fetchUsers = async () => {
   try {
@@ -556,6 +822,7 @@ const confirmDecline = async () => {
 
 onMounted(() => {
   fetchUsers()
+  fetchResidences()
 })
 </script>
 
