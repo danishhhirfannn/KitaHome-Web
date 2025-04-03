@@ -126,43 +126,21 @@
                 <div class="space-y-4">
                   <div class="flex justify-between items-center">
                     <h4 class="text-lg font-semibold text-gray-900">Identity Verification</h4>
-                    <div v-if="user.identification_url && !user.isVerified && !user.isDeclined" class="flex gap-2">
-                      <Button
-                        label="Accept"
-                        icon="pi pi-check"
-                        severity="success"
-                        text
-                        size="small"
-                        @click="updateVerificationStatus('accept')"
-                      />
-                      <Button
-                        label="Decline"
-                        icon="pi pi-times"
-                        severity="danger"
-                        text
-                        size="small"
-                        @click="handleDeclineClick"
-                      />
-                    </div>
+                    <span :class="{
+                      'px-3 py-1 text-sm rounded-full font-medium': true,
+                      'bg-green-100 text-green-800': user.isVerified,
+                      'bg-red-100 text-red-800': user.isDeclined,
+                      'bg-yellow-100 text-yellow-800': !user.isVerified && !user.isDeclined
+                    }">
+                      {{ user.isVerified ? 'Verified' : user.isDeclined ? 'Declined' : 'Pending Verification' }}
+                    </span>
                   </div>
-                  <div v-if="user.identification_url" class="border border-gray-200 rounded-lg p-4">
-                    <div class="flex items-center justify-between">
-                      <div class="flex items-center gap-2">
-                        <i class="pi pi-id-card text-primary-500"></i>
-                        <a 
-                          href="#" 
-                          class="text-sm font-medium text-primary-600 hover:text-primary-700"
-                          @click.prevent="viewDocument(user.identification_url)"
-                        >
-                          View Identification Document
-                        </a>
-                      </div>
-                      <Button
-                        icon="pi pi-external-link"
-                        text
-                        @click="viewDocument(user.identification_url)"
-                        class="!text-primary-600"
-                      />
+                  <div v-if="user.identification_url" class="border border-gray-200 rounded-lg p-4 cursor-pointer hover:bg-gray-50 transition-colors" @click="showIdDialog = true">
+                    <div class="flex items-center gap-2">
+                      <i class="pi pi-id-card text-primary-500"></i>
+                      <span class="text-sm font-medium text-primary-600 hover:text-primary-700">
+                        View Identification Document
+                      </span>
                     </div>
                   </div>
                   <div v-else class="flex items-center gap-2 text-gray-400 p-4 border border-gray-200 rounded-lg">
@@ -179,30 +157,60 @@
                   <div class="space-y-6">
                     <div>
                       <h5 class="text-sm font-medium text-gray-500 mb-3">Transaction History</h5>
-                      <ul class="space-y-3">
-                        <li v-for="(transaction, index) in [
-                          { date: 'Mar 1, 2024', type: 'March Maintenance Fee', amount: 250.00, status: 'paid' },
-                          { date: 'Feb 1, 2024', type: 'February Maintenance Fee', amount: 250.00, status: 'paid' },
-                          { date: 'Jan 1, 2024', type: 'January Maintenance Fee', amount: 250.00, status: 'paid' },
-                          { date: 'Dec 1, 2023', type: 'December Maintenance Fee', amount: 250.00, status: 'paid' },
-                          { date: 'Nov 1, 2023', type: 'November Maintenance Fee', amount: 250.00, status: 'paid' }
-                        ]" :key="index"
-                          class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
-                        >
-                          <div class="flex items-start gap-3">
-                            <div class="w-8 h-8 rounded-full bg-primary-50 flex items-center justify-center flex-shrink-0">
-                              <i class="pi pi-wallet text-primary-500 text-sm"></i>
+                      <div v-if="transactions.length === 0" class="text-center py-8 text-gray-500">
+                        <i class="pi pi-wallet text-4xl mb-2"></i>
+                        <p>No transactions found</p>
+                      </div>
+                      <Accordion v-else :multiple="true" :activeIndex="[0]" class="custom-accordion">
+                        <AccordionTab v-for="year in getAvailableYears()" :key="year">
+                          <template #header>
+                            <div class="flex items-center gap-2">
+                              <i class="pi pi-folder text-primary-500"></i>
+                              <span class="font-medium">{{ year }}</span>
+                              <span class="text-xs text-gray-500 ml-2">
+                                ({{ getTransactionsByYear(year).length }} transactions)
+                              </span>
                             </div>
-                            <div>
-                              <p class="text-sm font-medium text-gray-900">{{ transaction.type }}</p>
-                              <p class="text-xs text-gray-500">{{ transaction.date }}</p>
+                          </template>
+                          <div class="bg-gray-50 rounded-lg p-4">
+                            <div class="flex justify-between items-center mb-3">
+                              <span class="text-sm font-medium text-gray-500">Total for {{ year }}</span>
+                              <span class="text-base font-semibold text-primary-600">
+                                RM {{ getYearTotal(year).toFixed(2) }}
+                              </span>
                             </div>
+                            <ul class="space-y-3">
+                              <li v-for="transaction in getTransactionsByYear(year)" :key="transaction.transactionID"
+                                class="flex items-center justify-between py-3 px-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow"
+                              >
+                                <div class="flex items-start gap-3">
+                                  <div class="w-10 h-10 rounded-full bg-primary-50 flex items-center justify-center flex-shrink-0">
+                                    <i class="pi pi-wallet text-primary-500 text-lg"></i>
+                                  </div>
+                                  <div>
+                                    <div class="flex items-center gap-2">
+                                      <p class="text-sm font-medium text-gray-900">{{ transaction.transactionTitle }}</p>
+                                      <span v-if="transaction.isLate" class="text-[10px] text-yellow-600 bg-yellow-50 px-1.5 py-0.5 rounded-full">
+                                        Late
+                                      </span>
+                                    </div>
+                                    <p class="text-xs text-gray-500">{{ formatDate(transaction.created_at) }}</p>
+                                    <p v-if="transaction.transactionDescription" class="text-xs text-gray-500 mt-1">
+                                      {{ transaction.transactionDescription }}
+                                    </p>
+                                  </div>
+                                </div>
+                                <span class="text-base font-semibold" :class="{
+                                  'text-green-600': !transaction.isLate,
+                                  'text-yellow-600': transaction.isLate
+                                }">
+                                  RM {{ transaction.transactionAmount.toFixed(2) }}
+                                </span>
+                              </li>
+                            </ul>
                           </div>
-                          <div class="flex items-center gap-2">
-                            <span class="text-base font-semibold text-green-600">RM {{ transaction.amount.toFixed(2) }}</span>
-                          </div>
-                        </li>
-                      </ul>
+                        </AccordionTab>
+                      </Accordion>
                     </div>
                   </div>
                 </div>
@@ -212,88 +220,109 @@
               <div v-if="activeSection === 'Complaints'" :key="'complaints'" class="w-full">
                 <div class="space-y-4">
                   <h4 class="text-lg font-semibold text-gray-900">Complaint History</h4>
-                  <ul class="space-y-3">
-                    <li v-for="complaint in [
-                      {
-                        complainID: 'CMP001',
-                        complainDescription: 'Persistent noise disturbance from unit above (A-15-02) during late hours between 11 PM to 2 AM. The disturbances include heavy furniture dragging, loud footsteps, and excessive music volume that reverberates through the ceiling. This has been occurring consistently for the past week, significantly impacting the sleep quality and daily routines of all household members. Multiple attempts to communicate with the upstairs neighbors have been unsuccessful.',
-                        complainStatus: 'Resolved',
-                        complainSeverity: 'High',
-                        complainSentimentScore: -0.8,
-                        complainMagnitude: 0.9,
-                        complainCreatedAt: '2024-03-15T08:30:00'
-                      },
-                      {
-                        complainID: 'CMP002',
-                        complainDescription: 'Severe water leakage detected in the master bedroom ceiling, specifically near the air-conditioning unit and extending towards the window area. The leak has caused visible water stains, paint bubbling, and concerning moisture damage to the ceiling structure. During heavy rainfall, water actively drips onto the bed and carpet area, creating potential safety hazards and promoting mold growth. Emergency temporary fixes have been ineffective.',
-                        complainStatus: 'In Progress',
-                        complainSeverity: 'Medium',
-                        complainSentimentScore: -0.6,
-                        complainMagnitude: 0.7,
-                        complainCreatedAt: '2024-03-10T14:15:00'
-                      }
-                    ]" :key="complaint.complainID" 
-                      class="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      <div class="flex justify-between items-start">
-                        <div class="flex items-start gap-3">
-                          <div class="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
-                            <i class="pi pi-exclamation-circle text-red-500 text-sm"></i>
-                          </div>
-                          <div class="flex-1">
-                            <span class="text-md font-medium text-gray-900">{{ complaint.complainID }}</span>
-                            <p class="text-sm text-gray-700 mt-1">{{ complaint.complainDescription }}</p>
-                            <div class="flex items-center gap-4 mt-2">
-                              <div class="flex items-center gap-2">
-                                <span class="text-xs text-gray-500">Sentiment:</span>
-                                <span :class="{
-                                  'text-xs font-medium': true,
-                                  'text-red-600': complaint.complainSentimentScore < -0.5,
-                                  'text-orange-600': complaint.complainSentimentScore >= -0.5 && complaint.complainSentimentScore < 0,
-                                  'text-green-600': complaint.complainSentimentScore >= 0
-                                }">{{ complaint.complainSentimentScore.toFixed(2) }}</span>
+                  <Tabs v-model:value="activeTabIndex" class="mb-6">
+                    <TabList>
+                      <Tab value="0">Active Complaints</Tab>
+                      <Tab value="1">Complaint History</Tab>
+                    </TabList>
+                    <TabPanels>
+                      <TabPanel value="0" class="tab-panel">
+                        <!-- Empty state -->
+                        <div v-if="activeComplaints.length === 0" class="flex flex-col items-center justify-center py-12">
+                          <i class="pi pi-check-circle text-gray-300 text-5xl mb-4"></i>
+                          <h4 class="text-gray-500 font-medium text-sm mb-2">No active complaints</h4>
+                          <p class="text-gray-400 text-xs text-center max-w-xs">No active complaints at this time.</p>
+                        </div>
+                        
+                        <!-- Active Complaints List -->
+                        <div v-else class="space-y-3">
+                          <div v-for="complaint in activeComplaints" :key="complaint.complaintID" 
+                               class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden complaint-card">
+                            <div class="flex flex-col h-full">
+                              <div class="flex items-center px-4 py-3 border-b border-gray-100">
+                                <i class="pi pi-exclamation-circle mr-2 text-primary"></i>
+                                <span class="text-xs font-medium tracking-wide text-primary">
+                                  {{ complaint.complaintID }}
+                                </span>
+                                <div :class="[
+                                  'ml-auto px-2 py-0.5 rounded-full text-[10px] font-medium',
+                                  getPriorityClass(complaint.complaintPriority)
+                                ]">
+                                  {{ complaint.complaintPriority }}
+                                </div>
                               </div>
-                              <div class="flex items-center gap-2">
-                                <span class="text-xs text-gray-500">Magnitude:</span>
-                                <span class="text-xs font-medium text-primary-600">{{ complaint.complainMagnitude.toFixed(2) }}</span>
+                              <div class="p-4 flex-grow">
+                                <h4 class="text-sm font-semibold text-gray-800 mb-1">{{ complaint.complaintTitle }}</h4>
+                                <p class="text-xs text-gray-600 mb-3 line-clamp-3">{{ complaint.complaintDescription }}</p>
+                                
+                                <!-- Display image if available -->
+                                <div v-if="complaint.complaintImageUrl" class="mb-3">
+                                  <img 
+                                    :src="complaint.complaintImageUrl" 
+                                    alt="Complaint image" 
+                                    class="w-full h-32 object-cover rounded-lg shadow-sm complaint-image"
+                                    @click="openImagePreview(complaint.complaintImageUrl, $event)"
+                                  />
+                                </div>
+                                
+                                <div class="flex justify-between items-center mt-auto">
+                                  <span class="text-xs text-gray-500 font-light">{{ formatDate(complaint.created_at) }}</span>
+                                </div>
                               </div>
                             </div>
                           </div>
                         </div>
-                        <div class="flex flex-col items-end gap-2">
-                          <div class="flex flex-row gap-2 whitespace-nowrap">
-                            <span :class="{
-                              'px-2 py-1 text-xs rounded-full font-medium inline-block': true,
-                              'bg-green-100 text-green-700': complaint.complainStatus === 'Resolved',
-                              'bg-yellow-100 text-yellow-700': complaint.complainStatus === 'In Progress',
-                              'bg-gray-100 text-gray-700': complaint.complainStatus === 'Pending'
-                            }">{{ complaint.complainStatus }}</span>
-                            <span :class="{
-                              'px-2 py-1 text-xs rounded-full font-medium inline-block': true,
-                              'bg-red-100 text-red-700': complaint.complainSeverity === 'High',
-                              'bg-orange-100 text-orange-700': complaint.complainSeverity === 'Medium',
-                              'bg-blue-100 text-blue-700': complaint.complainSeverity === 'Low'
-                            }">{{ complaint.complainSeverity }}</span>
-                          </div>
-                          <div class="flex flex-col items-end text-xs text-gray-500">
-                            <span>
-                              {{ new Date(complaint.complainCreatedAt).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric'
-                              }) }}
-                            </span>
-                            <span>
-                              {{ new Date(complaint.complainCreatedAt).toLocaleTimeString('en-US', {
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              }) }}
-                            </span>
+                      </TabPanel>
+                      
+                      <TabPanel value="1" class="tab-panel">
+                        <!-- Empty state -->
+                        <div v-if="complaintHistory.length === 0" class="flex flex-col items-center justify-center py-12">
+                          <i class="pi pi-history text-gray-300 text-5xl mb-4"></i>
+                          <h4 class="text-gray-500 font-medium text-sm mb-2">No complaint history</h4>
+                          <p class="text-gray-400 text-xs text-center max-w-xs">Complaint history will appear here.</p>
+                        </div>
+                        
+                        <!-- Complaint History List -->
+                        <div v-else class="space-y-3">
+                          <div v-for="complaint in complaintHistory" :key="complaint.complaintID" 
+                               class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden complaint-card">
+                            <div class="flex flex-col h-full">
+                              <div class="flex items-center px-4 py-3 border-b border-gray-100">
+                                <i class="pi pi-exclamation-circle mr-2 text-primary"></i>
+                                <span class="text-xs font-medium tracking-wide text-primary">
+                                  {{ complaint.complaintID }}
+                                </span>
+                                <div :class="[
+                                  'ml-auto px-2 py-0.5 rounded-full text-[10px] font-medium',
+                                  getPriorityClass(complaint.complaintPriority)
+                                ]">
+                                  {{ complaint.complaintPriority }}
+                                </div>
+                              </div>
+                              <div class="p-4 flex-grow">
+                                <h4 class="text-sm font-semibold text-gray-800 mb-1">{{ complaint.complaintTitle }}</h4>
+                                <p class="text-xs text-gray-600 mb-3 line-clamp-3">{{ complaint.complaintDescription }}</p>
+                                
+                                <!-- Display image if available -->
+                                <div v-if="complaint.complaintImageUrl" class="mb-3">
+                                  <img 
+                                    :src="complaint.complaintImageUrl" 
+                                    alt="Complaint image" 
+                                    class="w-full h-32 object-cover rounded-lg shadow-sm complaint-image"
+                                    @click="openImagePreview(complaint.complaintImageUrl, $event)"
+                                  />
+                                </div>
+                                
+                                <div class="flex justify-between items-center mt-auto">
+                                  <span class="text-xs text-gray-500 font-light">{{ formatDate(complaint.created_at) }}</span>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </li>
-                  </ul>
+                      </TabPanel>
+                    </TabPanels>
+                  </Tabs>
                 </div>
               </div>
 
@@ -367,6 +396,39 @@
       </div>
     </div>
   </div>
+
+  <!-- Add the ID verification dialog -->
+  <Dialog
+    v-model:visible="showIdDialog"
+    modal
+    header="Identity Verification"
+    :style="{ width: '50rem' }"
+    :closable="true"
+  >
+    <div class="flex flex-col gap-4">
+      <div class="flex justify-center">
+        <img 
+          :src="user?.identification_url" 
+          alt="Identification Document"
+          class="max-w-full max-h-[500px] object-contain"
+        />
+      </div>
+      <div v-if="!user.isVerified && !user.isDeclined" class="flex justify-end gap-2 mt-4">
+        <Button
+          label="Decline"
+          icon="pi pi-times"
+          severity="danger"
+          @click="handleDeclineClick"
+        />
+        <Button
+          label="Accept"
+          icon="pi pi-check"
+          severity="success"
+          @click="updateVerificationStatus('accept')"
+        />
+      </div>
+    </div>
+  </Dialog>
 
   <!-- Add the decline dialog -->
   <Dialog
@@ -466,6 +528,18 @@
       </div>
     </div>
   </Dialog>
+
+  <!-- Image Preview Modal -->
+  <div v-if="isImagePreviewVisible" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[9999] p-4" @click.self="closeImagePreview">
+    <div class="relative bg-white rounded-lg shadow-lg max-w-2xl w-full">
+      <button class="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full bg-black bg-opacity-50 text-white hover:bg-opacity-70 transition-all" @click="closeImagePreview">
+        <i class="pi pi-times"></i>
+      </button>
+      <div class="p-2">
+        <img :src="previewImageUrl" alt="Image Preview" class="w-full h-auto rounded" />
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -479,6 +553,13 @@ import Dialog from 'primevue/dialog'
 import Textarea from 'primevue/textarea'
 import { useToast } from 'primevue/usetoast'
 import { TransitionGroup } from 'vue'
+import Accordion from 'primevue/accordion'
+import AccordionTab from 'primevue/accordiontab'
+import Tabs from 'primevue/tabs'
+import TabList from 'primevue/tablist'
+import Tab from 'primevue/tab'
+import TabPanels from 'primevue/tabpanels'
+import TabPanel from 'primevue/tabpanel'
 
 const router = useRouter()
 const route = useRoute()
@@ -494,6 +575,18 @@ const uploadPreviewUrl = ref(null)
 const isUploading = ref(false)
 const fileInputRef = ref(null)
 const customFileName = ref('')
+const showIdDialog = ref(false)
+
+const transactions = ref([])
+
+const activeComplaints = ref([])
+const complaintHistory = ref([])
+const isImagePreviewVisible = ref(false)
+const previewImageUrl = ref('')
+
+const activeSection = ref('Identity')
+const sections = ['Identity', 'Finance', 'Complaints', 'Documents']
+const activeTabIndex = ref('0')
 
 const fetchUserDetails = async () => {
   try {
@@ -525,9 +618,6 @@ const fetchUserDetails = async () => {
     })
   }
 }
-
-const activeSection = ref('Identity')
-const sections = ['Identity', 'Finance', 'Complaints', 'Documents']
 
 const viewDocument = (url) => {
   window.open(url, '_blank')
@@ -871,10 +961,115 @@ const formatDate = (dateString) => {
   })
 }
 
+const fetchTransactions = async () => {
+  if (!user.value || !user.value.userID) return
+  
+  try {
+    const { data, error } = await supabase
+      .from('Transaction')
+      .select('*')
+      .eq('transactionUserID', user.value.userID)
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    
+    console.log('Fetched transactions:', data)
+    transactions.value = data || []
+  } catch (error) {
+    console.error('Error fetching transactions:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to load transactions',
+      life: 3000
+    })
+  }
+}
+
+const getTransactionsByYear = (year) => {
+  console.log('Filtering transactions for year:', year)
+  console.log('All transactions:', transactions.value)
+  const filtered = transactions.value.filter(t => {
+    const transactionDate = new Date(t.created_at)
+    return transactionDate.getFullYear().toString() === year
+  })
+  console.log('Filtered transactions:', filtered)
+  return filtered
+}
+
+const getYearTotal = (year) => {
+  return getTransactionsByYear(year).reduce((total, transaction) => total + transaction.transactionAmount, 0)
+}
+
+const getAvailableYears = () => {
+  if (!transactions.value.length) return []
+  const years = new Set(transactions.value.map(t => new Date(t.created_at).getFullYear().toString()))
+  return Array.from(years).sort((a, b) => b - a)
+}
+
+const fetchComplaints = async () => {
+  if (!user.value || !user.value.userID) return
+  
+  try {
+    const { data, error } = await supabase
+      .from('Complaint')
+      .select('*')
+      .eq('complaintUserID', user.value.userID)
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    
+    // Separate active and historical complaints
+    activeComplaints.value = data.filter(complaint => !complaint.isResolved)
+    complaintHistory.value = data.filter(complaint => complaint.isResolved)
+  } catch (error) {
+    console.error('Error fetching complaints:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to load complaints',
+      life: 3000
+    })
+  }
+}
+
+const getPriorityClass = (priority) => {
+  switch (priority) {
+    case 'High':
+      return 'bg-red-100 text-red-700'
+    case 'Medium':
+      return 'bg-orange-100 text-orange-700'
+    case 'Low':
+      return 'bg-blue-100 text-blue-700'
+    default:
+      return 'bg-gray-100 text-gray-700'
+  }
+}
+
+const truncateId = (id) => {
+  if (!id) return ''
+  if (id.length <= 20) return id
+  return id.slice(0, 20) + '...'
+}
+
+const openImagePreview = (imageUrl, event) => {
+  if (event) {
+    event.stopPropagation()
+  }
+  previewImageUrl.value = imageUrl
+  isImagePreviewVisible.value = true
+}
+
+const closeImagePreview = () => {
+  isImagePreviewVisible.value = false
+}
+
 onMounted(() => {
   fetchUserDetails()
     .then(() => {
       fetchDocuments()
+      fetchTransactions()
+      fetchComplaints()
     })
 })
 </script>
@@ -900,5 +1095,101 @@ onMounted(() => {
 .fade-slide-leave-active {
   position: absolute;
   width: 100%;
+}
+
+.custom-accordion .p-accordion-header .p-accordion-header-link {
+  padding: 1rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.custom-accordion .p-accordion-header .p-accordion-header-link:hover {
+  background-color: #f9fafb;
+}
+
+.custom-accordion .p-accordion-content {
+  padding: 0;
+  border: none;
+}
+
+/* Complaint card style */
+.complaint-card {
+  transition: all 0.2s ease;
+}
+
+.complaint-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Line clamp utility class */
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Complaint image style */
+.complaint-image {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.complaint-image:hover {
+  transform: scale(1.01);
+  border-color: #4D5BBF;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Tabs component styling */
+:deep(.p-tablist-tab-list) {
+  border: none;
+  background: transparent;
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  position: relative;
+  gap: 0;
+}
+
+:deep(.p-tab) {
+  color: #4D5BBF;
+  background: white;
+  border: none;
+  padding: 0.75rem 1rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  text-align: center;
+  cursor: pointer;
+  border-radius: 0;
+  position: relative;
+  flex: 1;
+  max-width: 150px;
+}
+
+:deep(.p-tab-active) {
+  color: #4D5BBF;
+  font-weight: 600;
+}
+
+:deep(.p-tablist-active-bar) {
+  height: 2px;
+  background-color: #4D5BBF;
+  bottom: 0;
+  position: absolute;
+  transition: all 0.2s ease;
+}
+
+:deep(.p-tabs .p-tabpanels) {
+  background: transparent;
+  border: none;
+  padding: 1.25rem 0;
+}
+
+:deep(.p-tab:hover:not(.p-tab-active)) {
+  background: rgba(77, 91, 191, 0.04);
+  color: #4D5BBF;
 }
 </style>

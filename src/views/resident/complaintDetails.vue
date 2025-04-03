@@ -63,35 +63,118 @@
             </div>
           </div>
           
+          <!-- Ticket status tracker -->
+          <div class="">
+            <!-- Status track with better spacing -->
+            <div class="flex justify-center items-center">
+              <div class="flex items-center">
+                <!-- Step 1: Submitted -->
+                <div class="flex flex-col items-center w-16 sm:w-24">
+                  <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-yellow-500 text-white flex items-center justify-center text-sm font-medium mb-1 shadow-sm">
+                    <i class="pi pi-check text-xs sm:text-sm"></i>
+                  </div>
+                  <span class="text-xs font-medium text-yellow-600">Submitted</span>
+                </div>
+                
+                <!-- Connector line 1-2 -->
+                <div class="w-8 sm:w-16 h-1 mx-1 mb-4" :class="{
+                  'bg-blue-500': complaint.isPending,
+                  'bg-gray-300': !complaint.isPending
+                }"></div>
+                
+                <!-- Step 2: Reviewed -->
+                <div class="flex flex-col items-center w-16 sm:w-24">
+                  <div :class="{
+                    'w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm font-medium mb-1 shadow-sm': true,
+                    'bg-blue-500 text-white': complaint.isPending,
+                    'bg-gray-200 text-gray-600': !complaint.isPending
+                  }">
+                    <i v-if="complaint.isPending" class="pi pi-check text-xs sm:text-sm"></i>
+                    <span v-else class="text-xs sm:text-sm">2</span>
+                  </div>
+                  <span :class="{
+                    'text-xs font-medium': true, 
+                    'text-blue-600': complaint.isPending,
+                    'text-gray-500': !complaint.isPending
+                  }">Reviewed</span>
+                </div>
+                
+                <!-- Connector line 2-3 -->
+                <div class="w-8 sm:w-16 h-1 mx-1 mb-4" :class="{
+                  'bg-green-500': complaint.isResolved && complaint.isPending,
+                  'bg-gray-300': !complaint.isResolved || !complaint.isPending
+                }"></div>
+                
+                <!-- Step 3: Resolved -->
+                <div class="flex flex-col items-center w-16 sm:w-24">
+                  <div :class="{
+                    'w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm font-medium mb-1 shadow-sm': true,
+                    'bg-green-500 text-white': complaint.isResolved && complaint.isPending,
+                    'bg-gray-200 text-gray-600': !complaint.isResolved || !complaint.isPending
+                  }">
+                    <i v-if="complaint.isResolved && complaint.isPending" class="pi pi-check text-xs sm:text-sm"></i>
+                    <span v-else class="text-xs sm:text-sm">3</span>
+                  </div>
+                  <span :class="{
+                    'text-xs font-medium': true,
+                    'text-green-600': complaint.isResolved && complaint.isPending,
+                    'text-gray-500': !complaint.isResolved || !complaint.isPending
+                  }">Resolved</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
           <!-- Responses from management -->
           <Panel header="Responses from Management" :toggleable="true" class="complaint-panel mb-4">
             <div v-if="complaint.complaintFeedbacks && complaint.complaintFeedbacks.length > 0" class="space-y-4">
-              <div v-for="feedback in complaint.complaintFeedbacks" :key="feedback.feedbackID" 
-                   class="flex gap-3 items-start">
-                <div class="w-8 h-8 rounded-full bg-blue-100 flex-shrink-0 flex items-center justify-center text-blue-700 font-semibold">
-                  S
-                </div>
-                <div class="flex-1">
-                  <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                    <p class="text-sm text-gray-800">{{ feedback.feedbackDescription }}</p>
-                  </div>
-                  <div class="flex items-center mt-2">
-                    <span class="text-xs text-gray-500">
-                      Staff
-                    </span>
-                    <span class="mx-2 text-gray-300">•</span>
-                    <span class="text-xs text-gray-500">
-                      {{ new Date(feedback.created_at).toLocaleString() }}
-                    </span>
+              
+              <!-- Responses as tickets -->
+              <div v-if="complaint.complaintFeedbacks && complaint.complaintFeedbacks.length > 0">
+                <div v-for="feedback in complaint.complaintFeedbacks" :key="feedback.feedbackID" class="border-b border-gray-200 last:border-b-0">
+                  <div class="py-4 sm:py-5 px-3 sm:px-5 relative">
+                    <!-- Left side vertical line -->
+                    <div class="absolute left-8 sm:left-10 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+                    
+                    <!-- Response content with timestamp -->
+                    <div class="flex">
+                      <!-- Residence logo or default icon -->
+                      <div class="relative mr-3 sm:mr-4">
+                        <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center z-10 relative border border-gray-200 overflow-hidden bg-gray-100">
+                          <i class="pi pi-building text-gray-500 text-xs sm:text-sm"></i>
+                        </div>
+                        <!-- Horizontal connector -->
+                        <div class="absolute top-3 left-6 sm:left-7 w-2 sm:w-3 h-0.5 bg-gray-200"></div>
+                      </div>
+                      
+                      <!-- Response content -->
+                      <div class="flex-1">
+                        <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-3 sm:p-4">
+                          <div class="flex flex-col items-left gap-1 sm:gap-2 mb-2">
+                            <p class="text-gray-700 font-medium text-xs">Response ID:</p>
+                            <div class="text-xs sm:text-sm font-bold text-primary-600">
+                              #{{ feedback.feedbackID }}
+                            </div>
+                          </div>
+                          <p class="text-gray-800 whitespace-pre-line break-words text-sm mb-2">{{ feedback.feedbackDescription }}</p>
+                          <div class="text-xs text-gray-500">
+                            {{ new Date(feedback.created_at).toLocaleString() }}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
             
             <!-- No responses state -->
-            <div v-else class="bg-gray-50 p-4 rounded-lg text-center">
-              <i class="pi pi-inbox text-gray-300 text-xl mb-2"></i>
-              <p class="text-sm text-gray-500">No responses from management yet.</p>
+            <div v-else class="p-8 text-center">
+              <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 text-gray-400 mb-3">
+                <i class="pi pi-inbox text-3xl"></i>
+              </div>
+              <h4 class="text-gray-600 font-medium">No Responses Yet</h4>
+              <p class="text-gray-500 text-sm mt-1 max-w-md mx-auto">This ticket hasn't received any responses yet.</p>
             </div>
           </Panel>
           

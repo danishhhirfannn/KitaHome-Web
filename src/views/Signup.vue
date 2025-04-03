@@ -61,7 +61,9 @@
               type="text" 
               required 
               class="mt-1 block w-full px-3 py-2 border border-[#e4e4e7] rounded-md shadow-sm focus:ring-[#4D5BBF] focus:border-[#4D5BBF]"
+              @input="validateField('name')"
             />
+            <p v-if="validationErrors.name" class="mt-1 text-sm text-red-600">{{ validationErrors.name }}</p>
           </div>
           <div>
             <label for="email" class="block text-sm font-medium text-[#3f3f46]">Email</label>
@@ -71,6 +73,7 @@
               type="email" 
               required 
               class="mt-1 block w-full px-3 py-2 border border-[#e4e4e7] rounded-md shadow-sm focus:ring-[#4D5BBF] focus:border-[#4D5BBF]"
+              @input="validateField('email')"
             />
             <p v-if="validationErrors.email" class="mt-1 text-sm text-red-600">{{ validationErrors.email }}</p>
           </div>
@@ -83,6 +86,7 @@
                 :type="showPassword ? 'text' : 'password'" 
                 required 
                 class="block w-full px-3 py-2 border border-[#e4e4e7] rounded-md shadow-sm focus:ring-[#4D5BBF] focus:border-[#4D5BBF]"
+                @input="validateField('password')"
               />
               <button 
                 type="button" 
@@ -108,7 +112,9 @@
               type="tel" 
               required 
               class="mt-1 block w-full px-3 py-2 border border-[#e4e4e7] rounded-md shadow-sm focus:ring-[#4D5BBF] focus:border-[#4D5BBF]"
+              @input="validateField('phone')"
             />
+            <p v-if="validationErrors.phone" class="mt-1 text-sm text-red-600">{{ validationErrors.phone }}</p>
           </div>
         </div>
 
@@ -121,6 +127,7 @@
               v-model="formData.residence" 
               required 
               class="mt-1 block w-full px-3 py-2 border border-[#e4e4e7] rounded-md shadow-sm focus:ring-[#4D5BBF] focus:border-[#4D5BBF]"
+              @change="validateField('residence')"
             >
               <option value="">Select Residence</option>
               <option v-for="residence in residences" :key="residence.residenceID" :value="residence.residenceID">
@@ -143,6 +150,7 @@
               type="text" 
               required 
               class="mt-1 block w-full px-3 py-2 border border-[#e4e4e7] rounded-md shadow-sm focus:ring-[#4D5BBF] focus:border-[#4D5BBF]"
+              @input="validateField('unit')"
             />
             <p v-if="validationErrors.unit" class="mt-1 text-sm text-red-600">{{ validationErrors.unit }}</p>
           </div>
@@ -157,6 +165,7 @@
               v-model="formData.nationality" 
               required 
               class="mt-1 block w-full px-3 py-2 border border-[#e4e4e7] rounded-md shadow-sm focus:ring-[#4D5BBF] focus:border-[#4D5BBF]"
+              @change="validateField('nationality')"
             >
               <option value="">Select Country</option>
               <option v-for="country in countries" :key="country" :value="country">
@@ -173,9 +182,39 @@
               type="text" 
               required 
               class="mt-1 block w-full px-3 py-2 border border-[#e4e4e7] rounded-md shadow-sm focus:ring-[#4D5BBF] focus:border-[#4D5BBF]"
+              @input="validateField('idNumber')"
             />
             <p v-if="validationErrors.idNumber" class="mt-1 text-sm text-red-600">{{ validationErrors.idNumber }}</p>
           </div>
+
+          <!-- Consent Section -->
+          <div class="space-y-4">
+            <div class="text-sm text-[#71717a]">
+              <p class="mb-2">Before uploading your identification document, please read and agree to the following:</p>
+              <div class="bg-gray-50 p-4 rounded-md text-left">
+                <p class="text-sm text-gray-700 mb-2">By uploading your identification document, you consent to:</p>
+                <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                  <li>Collection and storage of your identification document for verification purposes</li>
+                  <li>Processing of your personal information in accordance with our Privacy Policy</li>
+                  <li>Verification of your identity by our management team</li>
+                  <li>Storage of your document for the duration of your residency</li>
+                </ul>
+              </div>
+            </div>
+            <div class="flex items-center">
+              <input
+                type="checkbox"
+                id="consent"
+                v-model="formData.consent"
+                class="h-4 w-4 text-[#4D5BBF] focus:ring-[#4D5BBF] border-gray-300 rounded"
+              />
+              <label for="consent" class="ml-2 block text-sm text-gray-700">
+                I have read and agree to the above terms
+              </label>
+            </div>
+            <p v-if="validationErrors.consent" class="text-sm text-red-600">{{ validationErrors.consent }}</p>
+          </div>
+
           <div>
             <label class="block text-sm font-medium text-[#3f3f46]">Submit your identification document</label>
             <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-[#e4e4e7] border-dashed rounded-md">
@@ -204,7 +243,7 @@
                 <div v-else class="flex text-sm text-[#71717a]">
                   <label for="file-upload" class="relative cursor-pointer rounded-md font-medium text-[#4D5BBF] hover:text-[#3e49a3]">
                     <span>Upload a file</span>
-                    <input id="file-upload" name="file-upload" type="file" class="sr-only" @change="handleFileUpload">
+                    <input id="file-upload" name="file-upload" type="file" class="sr-only" @change="handleFileUpload" :disabled="!formData.consent">
                   </label>
                   <p class="pl-1">or drag and drop</p>
                 </div>
@@ -318,7 +357,8 @@ export default {
         unit: '',
         nationality: '',
         idNumber: '',
-        idDocument: null
+        idDocument: null,
+        consent: false
       },
       userId: null, // To store the created user ID after step 2
       residences: [],
@@ -480,16 +520,42 @@ export default {
       this.validationErrors = {};
       
       if (this.currentStep === 1) {
+        // Name validation
+        if (!this.formData.name.trim()) {
+          this.validationErrors.name = 'Name is required';
+        } else if (!/^[a-zA-Z\s'-]+$/.test(this.formData.name)) {
+          this.validationErrors.name = 'Name can only contain letters, spaces, hyphens, and apostrophes';
+        } else if (this.formData.name.length < 2) {
+          this.validationErrors.name = 'Name must be at least 2 characters long';
+        }
+        
         // Email validation
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.formData.email)) {
+        if (!this.formData.email.trim()) {
+          this.validationErrors.email = 'Email is required';
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.formData.email)) {
           this.validationErrors.email = 'Please enter a valid email address';
         }
         
-        // Password validation (min 8 chars, 1 uppercase, 1 lowercase, 1 number)
-        if (this.formData.password.length < 8) {
+        // Password validation
+        if (!this.formData.password) {
+          this.validationErrors.password = 'Password is required';
+        } else if (this.formData.password.length < 8) {
           this.validationErrors.password = 'Password must be at least 8 characters';
-        } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(this.formData.password)) {
-          this.validationErrors.password = 'Password must include uppercase, lowercase, and numbers';
+        } else if (!/(?=.*[a-z])/.test(this.formData.password)) {
+          this.validationErrors.password = 'Password must include at least one lowercase letter';
+        } else if (!/(?=.*[A-Z])/.test(this.formData.password)) {
+          this.validationErrors.password = 'Password must include at least one uppercase letter';
+        } else if (!/(?=.*\d)/.test(this.formData.password)) {
+          this.validationErrors.password = 'Password must include at least one number';
+        }
+        
+        // Phone number validation
+        if (!this.formData.phone.trim()) {
+          this.validationErrors.phone = 'Phone number is required';
+        } else if (!/^\+?[\d\s-()]+$/.test(this.formData.phone)) {
+          this.validationErrors.phone = 'Please enter a valid phone number';
+        } else if (this.formData.phone.replace(/[\s-()]/g, '').length < 8) {
+          this.validationErrors.phone = 'Phone number must be at least 8 digits';
         }
       } else if (this.currentStep === 2) {
         // Residence validation
@@ -498,8 +564,10 @@ export default {
         }
         
         // Unit number validation
-        if (!this.formData.unit) {
-          this.validationErrors.unit = 'Please enter a unit number';
+        if (!this.formData.unit.trim()) {
+          this.validationErrors.unit = 'Unit number is required';
+        } else if (!/^[a-zA-Z0-9\s-]+$/.test(this.formData.unit)) {
+          this.validationErrors.unit = 'Unit number can only contain letters, numbers, spaces, and hyphens';
         }
       } else if (this.currentStep === 3) {
         // Nationality validation
@@ -508,8 +576,17 @@ export default {
         }
         
         // ID number validation
-        if (!this.formData.idNumber) {
-          this.validationErrors.idNumber = 'Please enter your ID number';
+        if (!this.formData.idNumber.trim()) {
+          this.validationErrors.idNumber = 'ID number is required';
+        } else if (!/^[a-zA-Z0-9]+$/.test(this.formData.idNumber)) {
+          this.validationErrors.idNumber = 'ID number can only contain letters and numbers';
+        } else if (this.formData.idNumber.length < 5) {
+          this.validationErrors.idNumber = 'ID number must be at least 5 characters';
+        }
+        
+        // Consent validation
+        if (!this.formData.consent) {
+          this.validationErrors.consent = 'Please agree to the terms before proceeding';
         }
         
         // Required document
@@ -521,6 +598,11 @@ export default {
       return Object.keys(this.validationErrors).length === 0;
     },
     handleFileUpload(event) {
+      if (!this.formData.consent) {
+        this.validationErrors.consent = 'Please agree to the terms before uploading your document';
+        return;
+      }
+
       const file = event.target.files[0];
       if (!file) return;
       
@@ -538,6 +620,7 @@ export default {
       }
       
       this.formData.idDocument = file;
+      delete this.validationErrors.consent;
     },
     removeFile() {
       this.formData.idDocument = null;
@@ -590,6 +673,87 @@ export default {
       } catch (error) {
         console.error('Error uploading document:', error);
         throw new Error('Failed to upload identification document');
+      }
+    },
+    validateField(field) {
+      if (this.currentStep === 1) {
+        if (field === 'name') {
+          if (!this.formData.name.trim()) {
+            this.validationErrors.name = 'Name is required';
+          } else if (!/^[a-zA-Z\s'-]+$/.test(this.formData.name)) {
+            this.validationErrors.name = 'Name can only contain letters, spaces, hyphens, and apostrophes';
+          } else if (this.formData.name.length < 2) {
+            this.validationErrors.name = 'Name must be at least 2 characters long';
+          } else {
+            delete this.validationErrors.name;
+          }
+        } else if (field === 'email') {
+          if (!this.formData.email.trim()) {
+            this.validationErrors.email = 'Email is required';
+          } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.formData.email)) {
+            this.validationErrors.email = 'Please enter a valid email address';
+          } else {
+            delete this.validationErrors.email;
+          }
+        } else if (field === 'password') {
+          if (!this.formData.password) {
+            this.validationErrors.password = 'Password is required';
+          } else if (this.formData.password.length < 8) {
+            this.validationErrors.password = 'Password must be at least 8 characters';
+          } else if (!/(?=.*[a-z])/.test(this.formData.password)) {
+            this.validationErrors.password = 'Password must include at least one lowercase letter';
+          } else if (!/(?=.*[A-Z])/.test(this.formData.password)) {
+            this.validationErrors.password = 'Password must include at least one uppercase letter';
+          } else if (!/(?=.*\d)/.test(this.formData.password)) {
+            this.validationErrors.password = 'Password must include at least one number';
+          } else {
+            delete this.validationErrors.password;
+          }
+        } else if (field === 'phone') {
+          if (!this.formData.phone.trim()) {
+            this.validationErrors.phone = 'Phone number is required';
+          } else if (!/^\+?[\d\s-()]+$/.test(this.formData.phone)) {
+            this.validationErrors.phone = 'Please enter a valid phone number';
+          } else if (this.formData.phone.replace(/[\s-()]/g, '').length < 8) {
+            this.validationErrors.phone = 'Phone number must be at least 8 digits';
+          } else {
+            delete this.validationErrors.phone;
+          }
+        }
+      } else if (this.currentStep === 2) {
+        if (field === 'residence') {
+          if (!this.formData.residence) {
+            this.validationErrors.residence = 'Please select a residence';
+          } else {
+            delete this.validationErrors.residence;
+          }
+        } else if (field === 'unit') {
+          if (!this.formData.unit.trim()) {
+            this.validationErrors.unit = 'Unit number is required';
+          } else if (!/^[a-zA-Z0-9\s-]+$/.test(this.formData.unit)) {
+            this.validationErrors.unit = 'Unit number can only contain letters, numbers, spaces, and hyphens';
+          } else {
+            delete this.validationErrors.unit;
+          }
+        }
+      } else if (this.currentStep === 3) {
+        if (field === 'nationality') {
+          if (!this.formData.nationality) {
+            this.validationErrors.nationality = 'Please select your nationality';
+          } else {
+            delete this.validationErrors.nationality;
+          }
+        } else if (field === 'idNumber') {
+          if (!this.formData.idNumber.trim()) {
+            this.validationErrors.idNumber = 'ID number is required';
+          } else if (!/^[a-zA-Z0-9]+$/.test(this.formData.idNumber)) {
+            this.validationErrors.idNumber = 'ID number can only contain letters and numbers';
+          } else if (this.formData.idNumber.length < 5) {
+            this.validationErrors.idNumber = 'ID number must be at least 5 characters';
+          } else {
+            delete this.validationErrors.idNumber;
+          }
+        }
       }
     }
   },

@@ -248,86 +248,211 @@
           </div>
         </div>
 
-        <!-- Conversation section -->
+        <!-- Complaint Review section -->
         <div class="mb-6">
-          <h3 class="text-lg font-semibold text-gray-700 mb-4">Complaint Review</h3>
-          <div class="bg-gray-50 rounded-lg p-4 max-h-[50vh] overflow-y-auto conversation-container">
-            <!-- Original complaint -->
-            <div class="flex gap-3 mb-6">
-              <div class="w-10 h-10 rounded-full bg-primary-100 flex-shrink-0 flex items-center justify-center text-primary-700 font-semibold">
-                {{ selectedComplaint.User?.fullName?.charAt(0).toUpperCase() }}
-              </div>
-              <div class="flex-1">
-                <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                  <p class="text-gray-800">{{ selectedComplaint.complaintDescription || 'No description provided.' }}</p>
+          <h3 class="text-lg font-semibold text-gray-700 mb-4 flex items-center">
+            Complaint Review
+          </h3>
+          
+          <!-- Ticket container -->
+          <div class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+            <!-- Original complaint as a ticket -->
+            <div class="border-b border-gray-200">
+              <!-- Ticket header -->
+              <div class="bg-gradient-to-r from-primary-50 to-primary-100 px-5 py-4 flex justify-between items-center">
+                <div class="flex-col items-center gap-3">
+                  <p class="text-gray-700 font-medium text-xs">Ticket ID:</p>
+                  <div class="text-sm font-bold text-primary-600">
+                    #{{ selectedComplaint.complaintID }}
+                  </div>
                   
-                  <!-- Display complaint image if available -->
-                  <div v-if="selectedComplaint.complaintImageUrl" class="mt-4">
-                    <img 
-                      :src="selectedComplaint.complaintImageUrl" 
-                      alt="Complaint image" 
-                      class="w-full max-h-64 object-cover rounded-lg shadow-sm complaint-image"
-                      @click="openImagePreview(selectedComplaint.complaintImageUrl)"
-                    />
-                  </div>
-                </div>
-                <div class="flex items-center mt-2">
-                  <span class="text-sm text-gray-500">
-                    {{ selectedComplaint.User?.fullName || 'Unknown User' }}
-                  </span>
-                  <span class="mx-2 text-gray-300">•</span>
-                  <span class="text-sm text-gray-500">
-                    {{ new Date(selectedComplaint.created_at).toLocaleString() || 'Date not available' }}
-                  </span>
                 </div>
               </div>
-            </div>
-
-            <!-- Previous responses -->
-            <div v-if="selectedComplaint.complaintFeedbacks && selectedComplaint.complaintFeedbacks.length > 0">
-              <div v-for="(feedback, index) in selectedComplaint.complaintFeedbacks" :key="index" class="flex gap-3 mb-6 justify-end">
-                <div class="flex-1">
-                  <div class="bg-blue-50 p-4 rounded-lg shadow-sm border border-blue-100">
-                    <p class="text-gray-800">{{ feedback.feedbackDescription }}</p>
-                  </div>
-                  <div class="flex items-center justify-end mt-2">
-                    <span class="text-sm text-gray-500">
-                      Staff
-                    </span>
-                    <span class="mx-2 text-gray-300">•</span>
-                    <span class="text-sm text-gray-500">
-                      {{ new Date(feedback.created_at).toLocaleString() || 'Date not available' }}
-                    </span>
-                  </div>
-                </div>
-                <div class="w-10 h-10 rounded-full bg-blue-100 flex-shrink-0 flex items-center justify-center text-blue-700 font-semibold">
-                  {{ feedback.feedbackUserID === auth.user.id ? getCurrentUserInitial() : 'S' }}
-                </div>
-              </div>
-            </div>
-
-            <!-- Reply input area -->
-            <div v-if="!selectedComplaint.isResolved" class="mt-6 pt-4 border-t border-gray-200">
-              <div class="flex gap-3">
-                <div class="w-10 h-10 rounded-full bg-blue-100 flex-shrink-0 flex items-center justify-center text-blue-700 font-semibold">
-                  {{ getCurrentUserInitial() }}
-                </div>
-                <div class="flex-1">
-                  <Textarea 
-                    v-model="replyMessage" 
-                    rows="3" 
-                    placeholder="Type your response here..." 
-                    class="w-full p-3 rounded-lg border border-gray-300 focus:border-primary-500 focus:ring focus:ring-primary-200"
+              
+              <!-- Ticket content -->
+              <div class="p-5">
+                <p class="text-gray-800 whitespace-pre-line">{{ selectedComplaint.complaintDescription || 'No description provided.' }}</p>
+                
+                <!-- Display complaint image if available -->
+                <div v-if="selectedComplaint.complaintImageUrl" class="mt-4">
+                  <img 
+                    :src="selectedComplaint.complaintImageUrl" 
+                    alt="Complaint image" 
+                    class="max-w-full h-auto rounded-lg shadow-sm cursor-pointer hover:shadow-md transition-all"
+                    @click="openImagePreview(selectedComplaint.complaintImageUrl)"
                   />
-                  <div class="flex justify-end mt-3">
-                    <Button 
-                      label="Send Reply" 
-                      icon="pi pi-send" 
-                      class="p-button-primary" 
-                      @click="sendReply"
-                      :disabled="!replyMessage.trim()"
-                    />
+                </div>
+              </div>
+            </div>
+            
+            <!-- Ticket status tracker -->
+            <div class="bg-gray-50 px-5 py-4 border-b border-gray-200">
+              <!-- Status track with better spacing -->
+              <div class="flex justify-center items-center">
+                <div class="flex items-center">
+                  <!-- Step 1: Submitted -->
+                  <div class="flex flex-col items-center w-24">
+                    <div class="w-10 h-10 rounded-full bg-yellow-500 text-white flex items-center justify-center text-sm font-medium mb-1 shadow-sm">
+                      <i class="pi pi-check"></i>
+                    </div>
+                    <span class="text-xs font-medium text-yellow-600">Submitted</span>
                   </div>
+                  
+                  <!-- Connector line 1-2 -->
+                  <div class="w-16 h-1 mx-1" :class="{
+                    'bg-blue-500': selectedComplaint.isPending,
+                    'bg-gray-300': !selectedComplaint.isPending
+                  }"></div>
+                  
+                  <!-- Step 2: Reviewed -->
+                  <div class="flex flex-col items-center w-24">
+                    <div :class="{
+                      'w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium mb-1 shadow-sm': true,
+                      'bg-blue-500 text-white': selectedComplaint.isPending,
+                      'bg-gray-200 text-gray-600': !selectedComplaint.isPending
+                    }">
+                      <i v-if="selectedComplaint.isPending" class="pi pi-check"></i>
+                      <span v-else>2</span>
+                    </div>
+                    <span :class="{
+                      'text-xs font-medium': true, 
+                      'text-blue-600': selectedComplaint.isPending,
+                      'text-gray-500': !selectedComplaint.isPending
+                    }">Reviewed</span>
+                  </div>
+                  
+                  <!-- Connector line 2-3 -->
+                  <div class="w-16 h-1 mx-1" :class="{
+                    'bg-green-500': selectedComplaint.isResolved && selectedComplaint.isPending,
+                    'bg-gray-300': !selectedComplaint.isResolved || !selectedComplaint.isPending
+                  }"></div>
+                  
+                  <!-- Step 3: Resolved -->
+                  <div class="flex flex-col items-center w-24">
+                    <div :class="{
+                      'w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium mb-1 shadow-sm': true,
+                      'bg-green-500 text-white': selectedComplaint.isResolved && selectedComplaint.isPending,
+                      'bg-gray-200 text-gray-600': !selectedComplaint.isResolved || !selectedComplaint.isPending
+                    }">
+                      <i v-if="selectedComplaint.isResolved && selectedComplaint.isPending" class="pi pi-check"></i>
+                      <span v-else>3</span>
+                    </div>
+                    <span :class="{
+                      'text-xs font-medium': true,
+                      'text-green-600': selectedComplaint.isResolved && selectedComplaint.isPending,
+                      'text-gray-500': !selectedComplaint.isResolved || !selectedComplaint.isPending
+                    }">Resolved</span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Status indicator - centered below tracker -->
+              <div class="mt-3 flex items-center justify-center">
+                <div :class="{
+                  'px-4 py-1.5 text-sm font-medium rounded-full inline-flex items-center': true,
+                  'bg-green-100 text-green-800': selectedComplaint.isResolved && selectedComplaint.isPending,
+                  'bg-blue-100 text-blue-800': !selectedComplaint.isResolved && selectedComplaint.isPending,
+                  'bg-yellow-100 text-yellow-800': !selectedComplaint.isPending
+                }">
+                  <i :class="{
+                    'mr-2': true,
+                    'pi pi-check-circle': selectedComplaint.isResolved && selectedComplaint.isPending,
+                    'pi pi-sync': !selectedComplaint.isResolved && selectedComplaint.isPending,
+                    'pi pi-inbox': !selectedComplaint.isPending
+                  }"></i>
+                  Current status: <span class="font-bold ml-1">{{ getStatusText(selectedComplaint) }}</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Response section header -->
+            <div class="bg-gray-50 px-5 py-3 border-b border-gray-200 flex items-center justify-between">
+              <h4 class="font-medium text-gray-700 flex items-center">
+                <i class="pi pi-ticket text-primary-500 mr-2"></i>
+                Ticket Responses
+              </h4>
+              <span class="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded-full">
+                {{ selectedComplaint.complaintFeedbacks?.length || 0 }} response(s)
+              </span>
+            </div>
+            
+            <!-- Responses as tickets -->
+            <div v-if="selectedComplaint.complaintFeedbacks && selectedComplaint.complaintFeedbacks.length > 0">
+              <div v-for="feedback in selectedComplaint.complaintFeedbacks" :key="feedback.feedbackID" class="border-b border-gray-200 last:border-b-0">
+                <div class="py-5 px-5 relative">
+                  <!-- Left side vertical line -->
+                  <div class="absolute left-10 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+                  
+                  <!-- Response content with timestamp -->
+                  <div class="flex">
+                    <!-- Residence logo or default icon -->
+                    <div class="relative mr-4">
+                      <div class="w-7 h-7 rounded-full flex items-center justify-center z-10 relative border border-gray-200 overflow-hidden bg-gray-100">
+                        <img v-if="getResidencePhoto(selectedComplaint)" :src="getResidencePhoto(selectedComplaint)" class="w-full h-full object-cover" alt="Residence" />
+                        <i v-else class="pi pi-building text-gray-500 text-sm"></i>
+                      </div>
+                      <!-- Horizontal connector -->
+                      <div class="absolute top-3.5 left-7 w-3 h-0.5 bg-gray-200"></div>
+                    </div>
+                    
+                    <!-- Response content -->
+                    <div class="flex-1">
+                      <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
+                        <div class="flex justify-between items-start mb-2">
+                          <div class="flex-col items-center gap-2">
+                            <p class="text-gray-700 font-medium text-xs">Response ID:</p>
+                            <div class="text-sm font-bold text-primary-600">
+                              #{{ feedback.feedbackID }}
+                            </div>
+                          </div>
+                          <div class="text-xs text-gray-500">
+                            {{ new Date(feedback.created_at).toLocaleString() }}
+                          </div>
+                        </div>
+                        <p class="text-gray-800 whitespace-pre-line break-words">{{ feedback.feedbackDescription }}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Empty state for no responses -->
+            <div v-if="!selectedComplaint.complaintFeedbacks || selectedComplaint.complaintFeedbacks.length === 0" class="p-8 text-center">
+              <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 text-gray-400 mb-3">
+                <i class="pi pi-inbox text-3xl"></i>
+              </div>
+              <h4 class="text-gray-600 font-medium">No Responses Yet</h4>
+              <p class="text-gray-500 text-sm mt-1 max-w-md mx-auto">This ticket hasn't received any responses. Add a response to address this complaint.</p>
+            </div>
+            
+            <!-- Reply input area -->
+            <div v-if="!selectedComplaint.isResolved" class="border-t border-gray-200 p-5 bg-gray-50">
+              <div class="flex items-center gap-2 mb-3">
+                <i class="pi pi-plus-circle text-primary-500"></i>
+                <span class="font-medium text-gray-700">Add New Response</span>
+              </div>
+              <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                <div class="flex items-center gap-2 mb-3">
+                  <div class="w-7 h-7 rounded-full bg-blue-100 flex-shrink-0 flex items-center justify-center text-blue-700 font-semibold text-sm border border-blue-200">
+                    {{ getCurrentUserInitial() }}
+                  </div>
+                  <span class="text-sm text-gray-600">Responding as Staff</span>
+                </div>
+                <Textarea 
+                  v-model="replyMessage" 
+                  rows="3" 
+                  placeholder="Type your response here..." 
+                  class="w-full p-3 rounded-lg border border-gray-300 focus:border-primary-500 focus:ring focus:ring-primary-200"
+                />
+                <div class="flex justify-end mt-3">
+                  <Button 
+                    label="Submit Response" 
+                    icon="pi pi-send" 
+                    class="p-button-primary" 
+                    @click="sendReply"
+                    :disabled="!replyMessage.trim()"
+                  />
                 </div>
               </div>
             </div>
@@ -431,13 +556,20 @@ const fetchComplaintsData = async () => {
       .select(`
         *,
         User:complaintUserID (
-          fullName
+          fullName,
+          residenceID,
+          Residence:residenceID (
+            displayPhotoUrl
+          )
         ),
         complaintFeedbacks:Complaint_Feedback (
           feedbackID,
           feedbackDescription,
           created_at,
-          feedbackUserID
+          feedbackUserID,
+          User:feedbackUserID (
+            fullName
+          )
         )
       `)
       .in('complaintUserID', userIds)
@@ -609,6 +741,11 @@ const openImagePreview = (imageUrl) => {
 // Close image preview
 const closeImagePreview = () => {
   isImagePreviewVisible.value = false
+}
+
+// Get residence photo URL
+const getResidencePhoto = (complaint) => {
+  return complaint?.User?.Residence?.displayPhotoUrl || null;
 }
 </script>
 
