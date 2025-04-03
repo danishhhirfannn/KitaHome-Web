@@ -15,6 +15,7 @@ import financialManagement from '@/views/management/financialManagement.vue'
 import complaintsManagement from '@/views/management/complaintsManagement.vue'
 import communicationManagement from '@/views/management/communicationManagement.vue'
 import announcementsManagement from '@/views/management/announcementsManagement.vue'
+import logsManagement from '@/views/management/logsManagement.vue'
 //Resident Views
 import residentDashboard from '@/views/resident/residentDashboard.vue'
 import financialManagementResident from '@/views/resident/financialManagementResident.vue'
@@ -132,6 +133,12 @@ const router = createRouter({
       path: '/resident/profile',
       name: 'profile',
       component: profile,
+    },
+    {
+      path: '/management/logsManagement',
+      name: 'logsManagement',
+      component: logsManagement,
+      meta: { requiresAuth: true, roles: ['management'] }
     },
   ],
 })

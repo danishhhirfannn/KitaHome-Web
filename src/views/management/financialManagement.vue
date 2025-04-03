@@ -317,6 +317,7 @@ import { useAuthStore } from '@/stores/auth'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
+import { logService } from '@/api/logService'
 
 const toast = useToast()
 const authStore = useAuthStore()
@@ -419,6 +420,266 @@ const fetchFinancialData = async () => {
     loading.value = false
   }
 }
+
+const createInvoice = async () => {
+  try {
+    saving.value = true
+    
+    // Create the invoice
+    const { data, error } = await supabase
+      .from('Invoice')
+      .insert({
+        // your invoice data here
+        ...invoiceForm.value
+      })
+      .select('*')
+      .single()
+    
+    if (error) throw error
+    
+    // Log invoice creation
+    await logService.logAction({
+      action: 'create',
+      description: `Created invoice: ${invoiceForm.value.description || 'New Invoice'} for ${invoiceForm.value.amount}`,
+      targetTable: 'Invoice',
+      targetID: data.invoiceID,
+      metadata: {
+        amount: invoiceForm.value.amount,
+        description: invoiceForm.value.description,
+        dueDate: invoiceForm.value.dueDate
+      }
+    })
+    
+    // Your existing success handling
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Invoice created successfully',
+      life: 3000
+    })
+    
+    // Your existing form reset and refresh
+    
+  } catch (error) {
+    console.error('Error creating invoice:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to create invoice',
+      life: 3000
+    })
+  } finally {
+    saving.value = false
+  }
+}
+
+const updateInvoiceStatus = async (invoiceId, newStatus) => {
+  try {
+    // Get current invoice for logging
+    const { data: invoiceData, error: fetchError } = await supabase
+      .from('Invoice')
+      .select('*')
+      .eq('invoiceID', invoiceId)
+      .single()
+    
+    if (fetchError) throw fetchError
+    
+    // Update status
+    const { error } = await supabase
+      .from('Invoice')
+      .update({ status: newStatus })
+      .eq('invoiceID', invoiceId)
+    
+    if (error) throw error
+    
+    // Log status update
+    await logService.logAction({
+      action: 'update',
+      description: `Updated invoice status to '${newStatus}' for invoice ${invoiceData.description || 'Invoice'} (${invoiceData.amount})`,
+      targetTable: 'Invoice',
+      targetID: invoiceId,
+      metadata: {
+        previousStatus: invoiceData.status,
+        newStatus: newStatus
+      }
+    })
+    
+    // Your existing success handling
+    toast.add({
+      severity: 'success',
+      summary: 'Status Updated',
+      detail: `Invoice status updated to ${newStatus}`,
+      life: 3000
+    })
+    
+    // Your existing refresh logic
+    
+  } catch (error) {
+    console.error('Error updating invoice status:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to update invoice status',
+      life: 3000
+    })
+  }
+}
+
+// Function to mark an invoice as paid
+const markInvoiceAsPaid = async (invoice) => {
+  try {
+    loading.value = true;
+    
+    // Update the invoice status to paid
+    const { data, error } = await supabase
+      .from('Invoice')
+      .update({ 
+        isPaid: true,
+        paidAt: new Date().toISOString()
+      })
+      .eq('invoiceID', invoice.invoiceID)
+      .select();
+      
+    if (error) throw error;
+    
+    // Log the payment action
+    await logService.logAction({
+      action: 'update',
+      description: `Marked invoice as paid: ${invoice.invoiceTitle || 'Invoice'}`,
+      targetTable: 'Invoice',
+      targetID: invoice.invoiceID,
+      metadata: {
+        invoiceTitle: invoice.invoiceTitle,
+        amount: invoice.invoiceAmount,
+        paidAt: new Date().toISOString(),
+        previousStatus: 'pending',
+        newStatus: 'paid',
+        residentName: invoice.User?.fullName || 'Unknown Resident'
+      }
+    });
+    
+    // Create a transaction record for this payment
+    const { data: transactionData, error: transactionError } = await supabase
+      .from('Transaction')
+      .insert({
+        transactionUserID: invoice.invoiceUserID,
+        transactionTitle: `Payment for ${invoice.invoiceTitle || 'Invoice'}`,
+        transactionAmount: invoice.invoiceAmount,
+        transactionDescription: `Payment for invoice #${invoice.invoiceID}`,
+        invoiceID: invoice.invoiceID
+      })
+      .select();
+      
+    if (transactionError) throw transactionError;
+    
+    // Log the transaction creation
+    await logService.logAction({
+      action: 'create',
+      description: `Created transaction record for invoice payment: ${invoice.invoiceTitle || 'Invoice'}`,
+      targetTable: 'Transaction',
+      targetID: transactionData[0].transactionID,
+      metadata: {
+        transactionTitle: `Payment for ${invoice.invoiceTitle || 'Invoice'}`,
+        amount: invoice.invoiceAmount,
+        invoiceID: invoice.invoiceID,
+        residentName: invoice.User?.fullName || 'Unknown Resident'
+      }
+    });
+    
+    // Update local state
+    const index = invoices.value.findIndex(inv => inv.invoiceID === invoice.invoiceID);
+    if (index !== -1) {
+      invoices.value[index].isPaid = true;
+      invoices.value[index].paidAt = new Date().toISOString();
+    }
+    
+    // If this is the selected item, update it too
+    if (selectedItem.value && selectedItem.value.invoiceID === invoice.invoiceID) {
+      selectedItem.value.isPaid = true;
+      selectedItem.value.paidAt = new Date().toISOString();
+    }
+    
+    // Refresh the transactions list
+    await fetchFinancialData();
+    
+    toast.add({
+      severity: 'success',
+      summary: 'Payment Recorded',
+      detail: 'Invoice has been marked as paid and transaction created',
+      life: 3000
+    });
+    
+  } catch (error) {
+    console.error('Error marking invoice as paid:', error);
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to process payment',
+      life: 3000
+    });
+  } finally {
+    loading.value = false;
+  }
+};
+
+// Function to create a manual transaction
+const createManualTransaction = async (transactionData) => {
+  try {
+    loading.value = true;
+    
+    // Create the transaction
+    const { data, error } = await supabase
+      .from('Transaction')
+      .insert({
+        transactionUserID: transactionData.userID,
+        transactionTitle: transactionData.title,
+        transactionAmount: transactionData.amount,
+        transactionDescription: transactionData.description,
+        isManual: true
+      })
+      .select();
+      
+    if (error) throw error;
+    
+    // Log the manual transaction creation
+    await logService.logAction({
+      action: 'create',
+      description: `Created manual transaction: ${transactionData.title}`,
+      targetTable: 'Transaction',
+      targetID: data[0].transactionID,
+      metadata: {
+        transactionTitle: transactionData.title,
+        amount: transactionData.amount,
+        isManual: true,
+        residentID: transactionData.userID,
+        reason: transactionData.description
+      }
+    });
+    
+    // Refresh the transactions list
+    await fetchFinancialData();
+    
+    toast.add({
+      severity: 'success',
+      summary: 'Transaction Created',
+      detail: 'Manual transaction has been recorded successfully',
+      life: 3000
+    });
+    
+    return data[0];
+  } catch (error) {
+    console.error('Error creating manual transaction:', error);
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to create transaction',
+      life: 3000
+    });
+    return null;
+  } finally {
+    loading.value = false;
+  }
+};
 
 onMounted(() => {
   fetchFinancialData()

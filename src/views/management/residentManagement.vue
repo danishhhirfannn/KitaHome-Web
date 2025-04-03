@@ -220,7 +220,7 @@
                         icon="pi pi-check"
                         size="small"
                         class="!bg-transparent !border-none !shadow-none hover:!bg-green-50 !text-green-600"
-                        @click="updateVerificationStatus('accept')"
+                        @click="updateVerificationStatus('accept', selectedUser.userID)"
                       />
                       <Button 
                         label="Decline"
@@ -430,6 +430,7 @@ import { useToast } from 'primevue/usetoast'
 import InputTextarea from 'primevue/textarea'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
+import { logService } from '@/api/logService'
 
 // Move toast initialization here
 const toast = useToast()
@@ -521,59 +522,61 @@ const handleDeclineClick = () => {
   showDeclineDialog.value = true // Show the dialog
 }
 
-const updateVerificationStatus = async (action, reason = '') => {
+const updateVerificationStatus = async (action, userId, reason = '') => {
   try {
-    if (!selectedUser.value?.userID) {
-      toast.add({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'No user ID found',
-        life: 3000
-      })
-      return
-    }
-
     const updates = {
       isVerified: action === 'accept',
       isDeclined: action === 'decline',
       declineReason: action === 'decline' ? reason : null
     }
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('User')
       .update(updates)
-      .eq('userID', selectedUser.value.userID)
+      .eq('userID', userId)
+      .select('*')
+      .single()
 
     if (error) throw error
 
     // Update local state
-    selectedUser.value = {
-      ...selectedUser.value,
-      ...updates
+    const index = users.value.findIndex(u => u.userID === userId)
+    if (index !== -1) {
+      users.value[index] = { ...users.value[index], ...updates }
     }
+
+    // Log the action
+    const user = users.value.find(u => u.userID === userId)
+    await logService.logAction({
+      action: action === 'accept' ? 'verify' : 'reject',
+      description: `${action === 'accept' ? 'Verified' : 'Declined'} resident: ${user?.fullName || 'Unknown'} (${user?.email || 'No email'})`,
+      targetTable: 'User',
+      targetID: userId,
+      metadata: {
+        action,
+        reason: reason || null
+      }
+    })
 
     // Show success toast
     toast.add({
       severity: action === 'accept' ? 'success' : 'info',
-      summary: action === 'accept' ? 'Document Accepted' : 'Document Declined',
-      detail: `${selectedUser.value.fullName}'s identification document has been ${action}ed.`,
+      summary: action === 'accept' ? 'User Verified' : 'User Declined',
+      detail: `The user has been ${action}ed.`,
       life: 3000
     })
 
-    // Close decline dialog if open
     showDeclineDialog.value = false
     declineReason.value = ''
 
-    // Refresh the users list
-    await fetchUsers()
   } catch (error) {
+    console.error('Error updating verification status:', error)
     toast.add({
       severity: 'error',
       summary: 'Error',
       detail: 'Failed to update verification status.',
       life: 3000
     })
-    console.error('Error updating verification status:', error.message)
   }
 }
 
@@ -587,8 +590,180 @@ const confirmDecline = async () => {
     })
     return
   }
-  await updateVerificationStatus('decline', declineReason.value)
+  await updateVerificationStatus('decline', selectedUser.value.userID, declineReason.value)
 }
+
+const updateUserRole = async (userId, roleUpdates) => {
+  try {
+    // Fetch current user data for comparison and logging
+    const { data: currentUserData, error: fetchError } = await supabase
+      .from('User')
+      .select('*')
+      .eq('userID', userId)
+      .single();
+      
+    if (fetchError) throw fetchError;
+    
+    // Update the user roles
+    const { data, error } = await supabase
+      .from('User')
+      .update(roleUpdates)
+      .eq('userID', userId)
+      .select('*')
+      .single();
+      
+    if (error) throw error;
+    
+    // Update local state
+    const index = users.value.findIndex(u => u.userID === userId);
+    if (index !== -1) {
+      users.value[index] = { ...users.value[index], ...roleUpdates };
+    }
+    
+    // If this is the selected user, update that too
+    if (selectedUser.value && selectedUser.value.userID === userId) {
+      selectedUser.value = { ...selectedUser.value, ...roleUpdates };
+    }
+    
+    // Determine which roles were added or removed
+    const roleChanges = {
+      isAdmin: roleUpdates.isAdmin !== undefined && roleUpdates.isAdmin !== currentUserData.isAdmin,
+      isManagement: roleUpdates.isManagement !== undefined && roleUpdates.isManagement !== currentUserData.isManagement,
+      isResident: roleUpdates.isResident !== undefined && roleUpdates.isResident !== currentUserData.isResident
+    };
+    
+    // Create descriptive message for the action
+    let roleDiff = [];
+    if (roleChanges.isAdmin) {
+      roleDiff.push(`Admin role ${roleUpdates.isAdmin ? 'added' : 'removed'}`);
+    }
+    if (roleChanges.isManagement) {
+      roleDiff.push(`Management role ${roleUpdates.isManagement ? 'added' : 'removed'}`);
+    }
+    if (roleChanges.isResident) {
+      roleDiff.push(`Resident role ${roleUpdates.isResident ? 'added' : 'removed'}`);
+    }
+    
+    // Log the role change action
+    await logService.logAction({
+      action: 'update',
+      description: `Updated roles for ${data.fullName || 'user'}: ${roleDiff.join(', ')}`,
+      targetTable: 'User',
+      targetID: userId,
+      metadata: {
+        previousRoles: {
+          isAdmin: currentUserData.isAdmin,
+          isManagement: currentUserData.isManagement,
+          isResident: currentUserData.isResident
+        },
+        newRoles: {
+          isAdmin: roleUpdates.isAdmin !== undefined ? roleUpdates.isAdmin : currentUserData.isAdmin,
+          isManagement: roleUpdates.isManagement !== undefined ? roleUpdates.isManagement : currentUserData.isManagement,
+          isResident: roleUpdates.isResident !== undefined ? roleUpdates.isResident : currentUserData.isResident
+        },
+        userName: data.fullName,
+        userEmail: data.email
+      }
+    });
+    
+    // Show success toast
+    toast.add({
+      severity: 'success',
+      summary: 'Roles Updated',
+      detail: `User roles have been updated successfully`,
+      life: 3000
+    });
+    
+    return true;
+  } catch (error) {
+    console.error('Error updating user roles:', error);
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to update user roles',
+      life: 3000
+    });
+    return false;
+  }
+};
+
+const assignRole = async (userId, role) => {
+  const roleUpdate = {};
+  roleUpdate[role] = true;
+  return updateUserRole(userId, roleUpdate);
+};
+
+const removeRole = async (userId, role) => {
+  const roleUpdate = {};
+  roleUpdate[role] = false;
+  return updateUserRole(userId, roleUpdate);
+};
+
+const updateUserUnit = async (userId, unitNumber) => {
+  try {
+    // Get current unit info for logging
+    const { data: currentData, error: fetchError } = await supabase
+      .from('User')
+      .select('unitNumber, fullName')
+      .eq('userID', userId)
+      .single();
+      
+    if (fetchError) throw fetchError;
+    
+    // Update the unit number
+    const { data, error } = await supabase
+      .from('User')
+      .update({ unitNumber })
+      .eq('userID', userId)
+      .select()
+      .single();
+      
+    if (error) throw error;
+    
+    // Update local state
+    const index = users.value.findIndex(u => u.userID === userId);
+    if (index !== -1) {
+      users.value[index].unitNumber = unitNumber;
+    }
+    
+    // If this is the selected user, update that too
+    if (selectedUser.value && selectedUser.value.userID === userId) {
+      selectedUser.value.unitNumber = unitNumber;
+    }
+    
+    // Log the unit update
+    await logService.logAction({
+      action: 'update',
+      description: `Updated unit for ${data.fullName} from ${currentData.unitNumber || 'none'} to ${unitNumber || 'none'}`,
+      targetTable: 'User',
+      targetID: userId,
+      metadata: {
+        previousUnit: currentData.unitNumber,
+        newUnit: unitNumber,
+        userName: data.fullName,
+        userEmail: data.email
+      }
+    });
+    
+    toast.add({
+      severity: 'success',
+      summary: 'Unit Updated',
+      detail: `Unit has been updated successfully`,
+      life: 3000
+    });
+    
+    return true;
+  } catch (error) {
+    console.error('Error updating unit:', error);
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to update unit',
+      life: 3000
+    });
+    return false;
+  }
+};
 
 onMounted(() => {
   fetchUsers()
@@ -659,13 +834,13 @@ onMounted(() => {
 }
 
 :deep(.p-dialog-enter-from),
-:deep(.p-dialog-leave-to) {
+:deep(.p-dialog-leave-from) {
   opacity: 0;
   transform: translateY(-50px);
 }
 
 :deep(.p-dialog-enter-to),
-:deep(.p-dialog-leave-from) {
+:deep(.p-dialog-leave-to) {
   opacity: 1;
   transform: translateY(0);
 }

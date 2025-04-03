@@ -560,6 +560,8 @@ import TabList from 'primevue/tablist'
 import Tab from 'primevue/tab'
 import TabPanels from 'primevue/tabpanels'
 import TabPanel from 'primevue/tabpanel'
+import { logService } from '@/api/logService'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const route = useRoute()
@@ -606,6 +608,22 @@ const fetchUserDetails = async () => {
     if (error) throw error
     user.value = data
     
+    // Log the view action
+    try {
+      const logResult = await logService.logAction({
+        action: 'view',
+        description: `Viewed resident profile: ${data.fullName} (${data.email})`,
+        targetTable: 'User',
+        targetID: data.userID
+      })
+      
+      if (!logResult.success) {
+        console.warn('Failed to log view action:', logResult.error)
+      }
+    } catch (logError) {
+      console.error('Error logging view action:', logError)
+    }
+    
     // Log the response to help with debugging
     console.log('User data:', data)
   } catch (error) {
@@ -643,6 +661,18 @@ const updateVerificationStatus = async (action, reason = '') => {
       ...user.value,
       ...updates
     }
+    
+    // Log the verification action
+    await logService.logAction({
+      action: action === 'accept' ? 'verify' : 'reject',
+      description: `${action === 'accept' ? 'Verified' : 'Declined'} resident: ${user.value.fullName} (${user.value.email})`,
+      targetTable: 'User',
+      targetID: user.value.userID,
+      metadata: { 
+        action,
+        reason: reason || null
+      }
+    })
 
     // Show success toast
     toast.add({

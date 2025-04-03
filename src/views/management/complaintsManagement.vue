@@ -510,6 +510,8 @@ import InputSwitch from 'primevue/inputswitch'
 import Dialog from 'primevue/dialog'
 import Textarea from 'primevue/textarea'
 import { useAuthStore } from '@/stores/auth'
+import { useToast } from 'primevue/usetoast'
+import { logService } from '@/api/logService'
 
 const auth = useAuthStore()
 const complaints = ref([])
@@ -523,6 +525,7 @@ const selectedComplaint = ref(null)
 const replyMessage = ref('')
 const isImagePreviewVisible = ref(false)
 const previewImageUrl = ref('')
+const toast = useToast()
 
 const fetchComplaintsData = async () => {
   try {
@@ -746,6 +749,122 @@ const closeImagePreview = () => {
 // Get residence photo URL
 const getResidencePhoto = (complaint) => {
   return complaint?.User?.Residence?.displayPhotoUrl || null;
+}
+
+const updateComplaintStatus = async (complaint, newStatus) => {
+  try {
+    const { data, error } = await supabase
+      .from('Complaint')
+      .update({ complaintStatus: newStatus })
+      .eq('complaintID', complaint.complaintID)
+      .select();
+      
+    if (error) throw error;
+    
+    // Update the status in our local array
+    const index = complaints.value.findIndex(c => c.complaintID === complaint.complaintID);
+    if (index !== -1) {
+      complaints.value[index].complaintStatus = newStatus;
+    }
+    
+    // Update displayed complaint if it's the selected one
+    if (selectedComplaint.value && selectedComplaint.value.complaintID === complaint.complaintID) {
+      selectedComplaint.value.complaintStatus = newStatus;
+    }
+    
+    // Log this complaint status update
+    await logService.logAction({
+      action: 'update',
+      description: `Updated complaint status to ${newStatus}`,
+      targetTable: 'Complaint',
+      targetID: complaint.complaintID,
+      metadata: {
+        complaintTitle: complaint.complaintTitle,
+        previousStatus: complaint.complaintStatus,
+        newStatus: newStatus,
+        residentName: `${complaint.firstName} ${complaint.lastName}`,
+        updatedAt: new Date().toISOString()
+      }
+    });
+    
+    toast.add({ severity: 'success', summary: 'Status Updated', detail: `Complaint status changed to ${newStatus}`, life: 3000 });
+    return true;
+  } catch (error) {
+    console.error('Error updating complaint status:', error);
+    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to update complaint status', life: 3000 });
+    return false;
+  }
+}
+
+async function markAsReviewed(complaint) {
+  return updateComplaintStatus(complaint, 'reviewed');
+}
+
+async function resolveComplaintStatus(complaint) {
+  return updateComplaintStatus(complaint, 'resolved');
+}
+
+async function submitResponse() {
+  if (!responseText.value.trim()) {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'Please enter a response', life: 3000 });
+    return;
+  }
+  
+  loading.value = true;
+  try {
+    const { data, error } = await supabase
+      .from('ComplaintResponse')
+      .insert({
+        complaintID: selectedComplaint.value.complaintID,
+        responseText: responseText.value,
+        responseBy: user.id
+      })
+      .select();
+      
+    if (error) throw error;
+    
+    // If successful, update the complaint status to resolved
+    const statusUpdated = await updateComplaintStatus(selectedComplaint.value, 'resolved');
+    
+    if (statusUpdated) {
+      // Log the response submission separately
+      await logService.logAction({
+        action: 'create',
+        description: `Submitted response to complaint: ${selectedComplaint.value.complaintTitle}`,
+        targetTable: 'ComplaintResponse',
+        targetID: data[0].responseID,
+        metadata: {
+          complaintID: selectedComplaint.value.complaintID,
+          complaintTitle: selectedComplaint.value.complaintTitle,
+          responseText: responseText.value,
+          residentName: `${selectedComplaint.value.firstName} ${selectedComplaint.value.lastName}`
+        }
+      });
+      
+      // Add the response to the UI
+      if (!selectedComplaint.value.responses) {
+        selectedComplaint.value.responses = [];
+      }
+      
+      selectedComplaint.value.responses.push({
+        responseID: data[0].responseID,
+        responseText: responseText.value,
+        created_at: data[0].created_at || new Date().toISOString(),
+        responderName: `${user.firstName} ${user.lastName}`,
+        responderInitials: getInitials(`${user.firstName} ${user.lastName}`)
+      });
+      
+      // Reset the response text
+      responseText.value = '';
+      
+      toast.add({ severity: 'success', summary: 'Response Submitted', detail: 'Your response has been submitted and the complaint marked as resolved', life: 3000 });
+    }
+  } catch (error) {
+    console.error('Error submitting response:', error);
+    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to submit response', life: 3000 });
+  } finally {
+    loading.value = false;
+  }
 }
 </script>
 

@@ -496,6 +496,7 @@ import Dialog from 'primevue/dialog'
 import Dropdown from 'primevue/dropdown'
 import ConfirmDialog from 'primevue/confirmdialog'
 import FileUpload from 'primevue/fileupload'
+import { logService } from '@/api/logService'
 
 const toast = useToast()
 const confirm = useConfirm()
@@ -621,6 +622,20 @@ const deleteAnnouncement = async (item) => {
       detailsDialog.value = false
     }
     
+    // Log announcement deletion
+    await logService.logAction({
+      action: 'delete',
+      description: `Deleted announcement: ${item.announcementTitle}`,
+      targetTable: 'Announcement',
+      targetID: item.announcementID,
+      metadata: {
+        title: item.announcementTitle,
+        status: item.announcementStatus,
+        visibility: item.announcementVisibility,
+        deletedAt: new Date().toISOString()
+      }
+    })
+    
     toast.add({
       severity: 'success',
       summary: 'Success',
@@ -707,6 +722,18 @@ const saveAnnouncement = async () => {
         announcements.value[index] = { ...data[0] }
       }
       
+      // Log announcement update
+      await logService.logAction({
+        action: 'update',
+        description: `Updated announcement: ${formModel.value.announcementTitle}`,
+        targetTable: 'Announcement',
+        targetID: formModel.value.announcementID,
+        metadata: {
+          title: formModel.value.announcementTitle,
+          content: formModel.value.announcementDescription
+        }
+      })
+      
       toast.add({
         severity: 'success',
         summary: 'Success',
@@ -731,6 +758,18 @@ const saveAnnouncement = async () => {
       
       // Update local state
       announcements.value.unshift(data[0])
+      
+      // Log announcement creation
+      await logService.logAction({
+        action: 'create',
+        description: `Created new announcement: ${formModel.value.announcementTitle}`,
+        targetTable: 'Announcement',
+        targetID: data[0].announcementID,
+        metadata: {
+          title: formModel.value.announcementTitle,
+          content: formModel.value.announcementDescription
+        }
+      })
       
       toast.add({
         severity: 'success',
@@ -765,6 +804,16 @@ const publishAnnouncement = async (item) => {
   try {
     const currentDate = new Date().toISOString()
     
+    // Get previous state for logging
+    const { data: previousData, error: fetchError } = await supabase
+      .from('Announcement')
+      .select('*')
+      .eq('announcementID', item.announcementID)
+      .single()
+      
+    if (fetchError) throw fetchError
+    
+    // Update the announcement status
     const { data, error } = await supabase
       .from('Announcement')
       .update({ 
@@ -785,6 +834,22 @@ const publishAnnouncement = async (item) => {
         selectedItem.value = { ...data[0] }
       }
     }
+    
+    // Log announcement publication with more detailed metadata
+    await logService.logAction({
+      action: 'publish',
+      description: `Published announcement: ${item.announcementTitle}`,
+      targetTable: 'Announcement',
+      targetID: item.announcementID,
+      metadata: {
+        title: item.announcementTitle,
+        previousStatus: previousData.announcementStatus,
+        newStatus: 'Published',
+        visibility: item.announcementVisibility,
+        publishedAt: currentDate,
+        hasAttachment: !!item.announcementAttachmentUrl
+      }
+    })
     
     toast.add({
       severity: 'success',

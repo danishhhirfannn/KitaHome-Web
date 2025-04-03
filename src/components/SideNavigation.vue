@@ -22,6 +22,7 @@ const managementLinks = [
   { text: 'Complaints', to: '/management/complaintsManagement', icon: 'pi pi-flag' },
   { text: 'Communication', to: '/management/communicationManagement', icon: 'pi pi-comments' },
   { text: 'Announcements', to: '/management/announcementsManagement', icon: 'pi pi-megaphone' },
+  { text: 'Activity Logs', to: '/management/logsManagement', icon: 'pi pi-history' },
 ]
 
 const handleLogout = async () => {

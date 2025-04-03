@@ -401,6 +401,8 @@ import Textarea from 'primevue/textarea';
 import Menu from 'primevue/menu';
 import Dropdown from 'primevue/dropdown';
 import { supabase } from '@/api/supabase';
+import { useToast } from 'primevue/usetoast';
+import { logService } from '@/api/logService';
 
 const authStore = useAuthStore();
 const currentUserId = ref(authStore.user?.id);
@@ -791,6 +793,20 @@ async function sendMessage() {
     // Update the chatroom's last message in the UI
     selectedChatroom.value.lastMessage = messageContent || 'Attachment';
     selectedChatroom.value.lastMessageTime = newMessageObj.timestamp;
+    
+    // Log this message action
+    await logService.logAction({
+      action: 'send',
+      description: `Sent message to ${selectedChatroom.value.name || 'a resident'}${attachmentUrl ? ' with attachment' : ''}`,
+      targetTable: 'Message',
+      targetID: data[0].messageID,
+      metadata: {
+        chatRoomID: selectedChatroom.value.id,
+        recipientName: selectedChatroom.value.name,
+        hasAttachment: !!attachmentUrl,
+        messageType: attachmentUrl ? 'attachment' : 'text'
+      }
+    });
     
     // Scroll to the bottom
     nextTick(() => {
