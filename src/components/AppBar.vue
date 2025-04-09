@@ -10,15 +10,33 @@ const userData = ref(null)
 // Fetch user details from User table
 const fetchUserDetails = async () => {
   try {
-    const { data, error } = await supabase
-      .from('User')
-      .select('fullName')
-      .eq('userID', authStore.user.id)
-      .single()
+    // No need to fetch again, userDetails already has the information
+    if (authStore.userDetails) {
+      userData.value = {
+        fullName: authStore.userDetails.fullName
+      }
+      console.log('Using existing user data:', userData.value)
+      return
+    }
+    
+    // As a fallback, try to fetch user details if needed
+    if (authStore.user?.email) {
+      const { data, error } = await supabase
+        .from('User')
+        .select('fullName')
+        .eq('email', authStore.user.email)
 
-    if (error) throw error
-    userData.value = data
-    console.log('Fetched user data:', data)
+      if (error) throw error
+      
+      if (data && data.length > 0) {
+        userData.value = data[0]
+        console.log('Fetched user data by email:', data[0])
+      } else {
+        console.warn('No user data found for email:', authStore.user.email)
+      }
+    } else {
+      console.warn('No user email available to fetch details')
+    }
   } catch (error) {
     console.error('Error fetching user details:', error)
   }
@@ -50,7 +68,9 @@ const handleClickOutside = (event) => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // Make sure auth is initialized
+  await authStore.initialize()
   fetchUserDetails()
   document.addEventListener('click', handleClickOutside)
 })

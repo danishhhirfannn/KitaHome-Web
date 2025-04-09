@@ -239,13 +239,13 @@ const revenueData = computed(() => ({
       label: 'Monthly Revenue',
       data: monthlyRevenue[selectedYear.value] || monthlyRevenue[2023],
       fill: true,
-      backgroundColor: 'rgba(146, 180, 244, 0.3)',
-      borderColor: '#5d7ce5',
+      backgroundColor: 'rgba(167, 197, 255, 0.5)',
+      borderColor: '#A7C5FF',
       tension: 0.4,
-      pointBackgroundColor: '#5d7ce5',
+      pointBackgroundColor: '#A7C5FF',
       pointBorderColor: '#fff',
       pointHoverBackgroundColor: '#fff',
-      pointHoverBorderColor: '#4a69d2'
+      pointHoverBorderColor: '#89ABDF'
     }
   ]
 }));
@@ -264,12 +264,12 @@ const invoiceComparisonData = computed(() => ({
     {
       label: 'Collected',
       data: (invoiceData[selectedYear.value] || invoiceData[2023]).collected,
-      backgroundColor: '#92b4f4'
+      backgroundColor: '#A7C5FF'
     },
     {
       label: 'Outstanding',
       data: (invoiceData[selectedYear.value] || invoiceData[2023]).outstanding,
-      backgroundColor: '#bbd0ff'
+      backgroundColor: '#FFB7B7'
     }
   ]
 }));
@@ -290,14 +290,14 @@ const invoiceStatusData = computed(() => ({
     {
       data: [invoiceStats.value.paid, invoiceStats.value.unpaid, invoiceStats.value.overdue],
       backgroundColor: [
-        '#92b4f4',
-        '#bbd0ff',
-        '#5d7ce5'
+        '#A7C5FF',
+        '#FFB7B7',
+        '#B4F0B4'
       ],
       hoverBackgroundColor: [
-        '#7a9cf0',
-        '#a3bdfa',
-        '#4a69d2'
+        '#89ABDF',
+        '#E09F9F',
+        '#9CD89C'
       ],
       borderWidth: 1,
       borderColor: ['#fff', '#fff', '#fff']
@@ -317,7 +317,7 @@ const complaintsStats = ref({
 });
 
 const complaintCategories = ['Maintenance', 'Noise', 'Security', 'Facilities', 'Cleanliness', 'Other'];
-const categoryColors = ['#92b4f4', '#7a9cf0', '#5d7ce5', '#4a69d2', '#bbd0ff', '#a3bdfa'];
+const categoryColors = ['#A7C5FF', '#FFB7B7', '#B4F0B4', '#FFE5A8', '#D9BBFF', '#A8E5FF'];
 
 const complaintsByCategoryData = computed(() => ({
   labels: complaintCategories,
@@ -340,17 +340,17 @@ const complaintsTrendData = computed(() => ({
       label: 'New Complaints',
       data: [38, 45, 40, 35, 48, 42],
       fill: false,
-      borderColor: '#5d7ce5',
+      borderColor: '#FFB7B7',
       tension: 0.4,
-      pointBackgroundColor: '#5d7ce5'
+      pointBackgroundColor: '#FFB7B7'
     },
     {
       label: 'Resolved',
       data: [32, 40, 35, 30, 42, 34],
       fill: false,
-      borderColor: '#92b4f4',
+      borderColor: '#B4F0B4',
       tension: 0.4,
-      pointBackgroundColor: '#92b4f4',
+      pointBackgroundColor: '#B4F0B4',
       borderDash: [5, 5]
     }
   ]
@@ -584,10 +584,10 @@ onMounted(() => {
 }
 
 :deep(.p-progressbar) {
-  background: #e9efff;
+  background: #EDF3FF;
 }
 
 :deep(.p-progressbar-value) {
-  background: #5d7ce5;
+  background: #A7C5FF;
 }
 </style>

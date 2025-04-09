@@ -33,7 +33,7 @@
       <DataTable
         :value="users"
         :paginator="true"
-        :rows="5"
+        :rows="10"
         :loading="loading"
         v-model:filters="filters"
         filterDisplay="menu"
@@ -447,6 +447,11 @@
         </div>
       </div>
 
+      <div class="mb-2">
+        <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password*</label>
+        <InputText id="password" v-model="userForm.password" class="w-full" type="password" />
+      </div>
+
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="mb-2">
           <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
@@ -589,7 +594,8 @@ const userForm = ref({
   isManagement: false,
   isAdmin: false,
   verificationStatus: 'pending',
-  declineReason: ''
+  declineReason: '',
+  password: ''
 })
 
 const resetUserForm = () => {
@@ -605,7 +611,8 @@ const resetUserForm = () => {
     isManagement: false,
     isAdmin: false,
     verificationStatus: 'pending',
-    declineReason: ''
+    declineReason: '',
+    password: ''
   }
 }
 
@@ -635,11 +642,11 @@ const fetchResidences = async () => {
 }
 
 const saveUser = async () => {
-  if (!userForm.value.fullName || !userForm.value.email) {
+  if (!userForm.value.fullName || !userForm.value.email || !userForm.value.password) {
     toast.add({
       severity: 'warn',
       summary: 'Warning',
-      detail: 'Full name and email are required',
+      detail: 'Full name, email, and password are required',
       life: 3000
     })
     return
@@ -648,12 +655,36 @@ const saveUser = async () => {
   try {
     savingUser.value = true
 
+    // First create user in Supabase Auth
+    // We need to store the current session before creating a new user
+    const currentSession = await supabase.auth.getSession()
+    
+    // Create new user with Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: userForm.value.email,
+      password: userForm.value.password,
+      options: {
+        emailRedirectTo: window.location.origin,
+      }
+    })
+
+    if (authError) throw authError
+
+    // Restore the admin session to avoid logging out
+    if (currentSession?.data?.session) {
+      await supabase.auth.setSession(currentSession.data.session)
+    }
+
+    // Get the user ID from the auth response
+    const userId = authData.user.id
+
     // Map form status to db fields
     const isVerified = userForm.value.verificationStatus === 'verified'
     const isDeclined = userForm.value.verificationStatus === 'declined'
 
-    // Create user object
+    // Create user object for User table (without password)
     const newUser = {
+      userID: userId, // Use the auth user ID
       fullName: userForm.value.fullName,
       email: userForm.value.email,
       phone: userForm.value.phone,
@@ -669,7 +700,7 @@ const saveUser = async () => {
       declineReason: isDeclined ? userForm.value.declineReason : null
     }
 
-    // Insert user
+    // Insert user into User table
     const { data, error } = await supabase
       .from('User')
       .insert(newUser)
@@ -700,6 +731,8 @@ const saveUser = async () => {
     let errorMessage = 'Failed to create user'
     if (error.code === '23505') {
       errorMessage = 'A user with this email already exists'
+    } else if (error.message) {
+      errorMessage = error.message
     }
     
     toast.add({
@@ -890,13 +923,13 @@ onMounted(() => {
 }
 
 :deep(.p-dialog-enter-from),
-:deep(.p-dialog-leave-to) {
+:deep(.p-dialog-leave-from) {
   opacity: 0;
   transform: translateY(-50px);
 }
 
 :deep(.p-dialog-enter-to),
-:deep(.p-dialog-leave-from) {
+:deep(.p-dialog-leave-to) {
   opacity: 1;
   transform: translateY(0);
 }

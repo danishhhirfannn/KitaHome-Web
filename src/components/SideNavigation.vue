@@ -11,7 +11,7 @@ const authStore = useAuthStore()
 const adminLinks = [
   { text: 'Dashboard', to: '/administrator/adminDashboard', icon: 'pi pi-home' },
   { text: 'Profile Management', to: '/administrator/profileManagement', icon: 'pi pi-users' },
-  { text: 'Financial Management', to: '/administrator/settings', icon: 'pi pi-cog' }
+  { text: 'Residence Management', to: '/administrator/residenceManagement', icon: 'pi pi-building' },
 ]
 
 const managementLinks = [
