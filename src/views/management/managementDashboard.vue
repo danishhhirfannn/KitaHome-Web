@@ -1,6 +1,15 @@
 <template>
+  <!-- Loading Screen -->
+  <div v-if="isLoading" class="min-h-screen flex flex-col items-center justify-center bg-[var(--p-primary-50)]">
+    <div class="loading-container">
+      <img src="@/assets/SmallHome_Logo.png" alt="Logo" class="loading-logo" />
+      <div class="loading-spinner"></div>
+    </div>
+    <p class="text-[var(--p-primary-700)] text-sm mt-4">Loading your dashboard...</p>
+  </div>
+
   <!-- If user hasn't accepted the agreement, show the agreement screen -->
-  <div v-if="!isAgreementAccepted" class="min-h-screen bg-white p-4 sm:p-6 rounded-tl-3xl rounded-tr-3xl shadow-lg flex flex-col items-center justify-center content-scale-in">
+  <div v-else-if="!isAgreementAccepted" class="min-h-screen bg-white p-4 sm:p-6 rounded-tl-3xl rounded-tr-3xl shadow-lg flex flex-col items-center justify-center content-scale-in">
     <div class="agreement-container w-full max-w-2xl animation-fade-in p-8 relative bg-white rounded-xl border border-[var(--p-primary-100)] shadow-sm">
       <div class="flex flex-col items-center text-center mb-6">
         <div class="agreement-icon-container mb-6">
@@ -253,9 +262,13 @@ import Checkbox from 'primevue/checkbox';
 import Button from 'primevue/button';
 import { supabase } from '@/api/supabase';
 import { useAuthStore } from '@/stores/auth';
+import SmallHomeLogo from '@/assets/SmallHome_Logo.png'; // Add logo import
 
 const authStore = useAuthStore();
 const emit = defineEmits(['update:sidenavVisibility']);
+
+// Loading state
+const isLoading = ref(true);
 
 // Agreement state
 const isAgreementAccepted = ref(false);
@@ -275,6 +288,11 @@ const totalMaintenanceFees = ref(285750);
 // Check if user has already accepted the agreement
 onMounted(async () => {
   try {
+    isLoading.value = true;
+    
+    // Simulate minimum loading time (at least 2 seconds)
+    const loadingPromise = new Promise(resolve => setTimeout(resolve, 2000));
+    
     const { data: { user: authUser } } = await supabase.auth.getUser();
     
     if (authUser) {
@@ -294,12 +312,17 @@ onMounted(async () => {
       }
     }
     
+    // Wait for minimum loading time to complete
+    await loadingPromise;
+    
     // Only initialize charts if agreement is accepted
     if (isAgreementAccepted.value) {
       initializeCharts();
     }
   } catch (error) {
     console.error('Error fetching user data:', error);
+  } finally {
+    isLoading.value = false;
   }
 });
 
@@ -710,6 +733,45 @@ const trendOptions = {
 
 :deep(.p-progressbar-value) {
   background: #A7C5FF;
+}
+
+/* Loading animation styles */
+.loading-container {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-logo {
+  width: 80px;
+  height: 80px;
+  z-index: 10;
+  object-fit: contain;
+}
+
+.loading-spinner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 3px solid transparent;
+  border-top: 3px solid var(--p-primary-600);
+  border-right: 3px solid var(--p-primary-600);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Agreement styles */
