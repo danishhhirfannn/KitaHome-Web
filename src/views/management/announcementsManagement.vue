@@ -23,7 +23,6 @@
         </div>
         <div class="flex space-x-2">
           <span class="p-input-icon-left relative" style="min-width: 250px;">
-            <i class="pi pi-search" />
             <InputText 
               v-model="filters.global.value" 
               :placeholder="`Search ${activeTab.toLowerCase()}...`"
