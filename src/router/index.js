@@ -150,6 +150,11 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, from, next) => {
+  // Routes that don't require authentication
+  if (to.path === '/' || to.path === '/signup') {
+    return next()
+  }
+
   const authStore = useAuthStore()
   
   // Initialize auth store if not already done
@@ -157,19 +162,16 @@ router.beforeEach(async (to, from, next) => {
 
   const { data: { session } } = await supabase.auth.getSession()
 
-  // Routes that don't require authentication
-  if (to.path === '/' || to.path === '/signup') {
-    if (session) {
-      if (authStore.isAdmin) return next('/administrator/adminDashboard')
-      if (authStore.isManagement) return next('/management/managementDashboard')
-      if (authStore.isResident) return next('/resident/residentDashboard')
-    }
-    return next()
-  }
-
   // Protect routes
   if (!session) {
     return next('/')
+  }
+
+  // Route based on user role if they're logged in and going to the root path
+  if (to.path === '/') {
+    if (authStore.isAdmin) return next('/administrator/adminDashboard')
+    if (authStore.isManagement) return next('/management/managementDashboard')
+    if (authStore.isResident) return next('/resident/residentDashboard')
   }
 
   next()

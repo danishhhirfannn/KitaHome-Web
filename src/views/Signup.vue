@@ -363,6 +363,7 @@ export default {
       userId: null, // To store the created user ID after step 2
       residences: [],
       countries: [
+        'Malaysia',
         'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda', 'Argentina', 'Armenia', 
         'Australia', 'Austria', 'Azerbaijan', 'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 
         'Belize', 'Benin', 'Bhutan', 'Bolivia', 'Bosnia and Herzegovina', 'Botswana', 'Brazil', 'Brunei', 
@@ -760,10 +761,19 @@ export default {
   async mounted() {
     // Only fetch residences if on step 2
     if (this.currentStep === 2) {
-      this.fetchResidences();
+      await this.fetchResidences();
     }
     
-    // No session check needed for signup page
+    // Clear any existing sessions to prevent authentication errors
+    if (window.location.pathname === '/signup') {
+      try {
+        // Clear any local storage tokens without making API calls
+        localStorage.removeItem('supabase.auth.token');
+        sessionStorage.removeItem('supabase.auth.token');
+      } catch (err) {
+        console.error('Error clearing local storage:', err);
+      }
+    }
   }
 }
 </script>

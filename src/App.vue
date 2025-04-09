@@ -1,15 +1,29 @@
 <script setup>
 import { RouterView, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import SideNavigation from '@/components/SideNavigation.vue'
 import BottomNavigation from '@/components/BottomNavigation.vue'
 import AppBar from '@/components/AppBar.vue'
+import { supabase } from '@/api/supabase'
 
 const route = useRoute()
 const authStore = useAuthStore()
+const isManagementVerified = ref(true) // Default to true, will be updated on mount if management
 
 onMounted(async () => {
+  // Skip authentication for public routes
+  const publicRoutes = ['/', '/signup']
+  if (publicRoutes.includes(route.path)) {
+    console.log('Auth Store State:', {
+      isAdmin: false,
+      isManagement: false,
+      isResident: false,
+      currentPath: route.path
+    })
+    return
+  }
+  
   await authStore.fetchUserDetails()
   console.log('Auth Store State:', {
     isAdmin: authStore.isAdmin,
@@ -17,7 +31,33 @@ onMounted(async () => {
     isResident: authStore.isResident,
     currentPath: route.path
   })
+  
+  // Check verification status for management users
+  if (authStore.isManagement) {
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      if (authUser) {
+        // Get user details
+        const { data: userData, error: userError } = await supabase
+          .from('User')
+          .select('isVerified')
+          .eq('userID', authUser.id)
+          .single()
+          
+        if (!userError && userData) {
+          isManagementVerified.value = userData.isVerified || false
+        }
+      }
+    } catch (error) {
+      console.error('Error checking verification status:', error)
+    }
+  }
 })
+
+// Update verification status from dashboard component
+const updateManagementVerification = (status) => {
+  isManagementVerified.value = status
+}
 
 const showNavigation = computed(() => {
   const publicRoutes = ['/', '/signup']
@@ -33,11 +73,21 @@ const hasBottomNav = computed(() => {
 })
 
 const hasSideNav = computed(() => {
-  return showNavigation.value && (authStore.isAdmin || authStore.isManagement)
+  // For management users, only show sidenav if they are verified
+  if (authStore.isManagement) {
+    return showNavigation.value && isManagementVerified.value
+  }
+  // For admin users, always show sidenav
+  return showNavigation.value && authStore.isAdmin
 })
 
 const hasAppBar = computed(() => {
-  return showNavigation.value && (authStore.isAdmin || authStore.isManagement)
+  // For management users, only show appbar if they are verified
+  if (authStore.isManagement) {
+    return showNavigation.value && isManagementVerified.value
+  }
+  // For admin users, always show appbar
+  return showNavigation.value && authStore.isAdmin
 })
 </script>
 
@@ -60,7 +110,7 @@ const hasAppBar = computed(() => {
             hasAppBar ? 'pt-0' : ''
           ]"
         >
-          <RouterView />
+          <RouterView @update:sidenavVisibility="updateManagementVerification" />
         </main>
       </div>
 

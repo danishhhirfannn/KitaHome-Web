@@ -1,5 +1,49 @@
 <template>
-  <div class="p-4 bg-[var(--p-primary-50)]">
+  <!-- If user hasn't accepted the agreement, show the agreement screen -->
+  <div v-if="!isAgreementAccepted" class="min-h-screen bg-white p-4 sm:p-6 rounded-tl-3xl rounded-tr-3xl shadow-lg flex flex-col items-center justify-center content-scale-in">
+    <div class="agreement-container w-full max-w-2xl animation-fade-in p-8 relative bg-white rounded-xl border border-[var(--p-primary-100)] shadow-sm">
+      <div class="flex flex-col items-center text-center mb-6">
+        <div class="agreement-icon-container mb-6">
+          <i class="pi pi-shield text-4xl text-[var(--p-primary-600)]"></i>
+        </div>
+        <h2 class="text-2xl font-bold text-[var(--p-primary-700)] mb-4">Management Verification</h2>
+        <p class="text-gray-600 mb-6">
+          Before gaining access to the management dashboard, you must verify your account by accepting the management code of conduct and responsibilities.
+        </p>
+      </div>
+      
+      <div class="bg-[var(--p-primary-50)] p-4 rounded-lg mb-6 text-left max-h-[300px] overflow-y-auto">
+        <h3 class="font-semibold text-[var(--p-primary-700)] mb-3">Management Code of Conduct</h3>
+        <div class="space-y-3 text-sm text-gray-700">
+          <p>1. <strong>Confidentiality Agreement:</strong> I understand that all resident information, financial data, and internal communications are strictly confidential. I will not share this information with unauthorized parties.</p>
+          <p>2. <strong>Data Privacy:</strong> I will adhere to all data protection regulations when handling resident personal data and ensure compliance with relevant privacy laws.</p>
+          <p>3. <strong>Ethical Conduct:</strong> I will perform my duties with integrity and transparency, avoiding any conflicts of interest or actions that may compromise the trust placed in me.</p>
+          <p>4. <strong>Professional Responsibility:</strong> I will respond to resident inquiries and complaints in a timely and professional manner, treating all residents with respect and fairness.</p>
+          <p>5. <strong>Financial Integrity:</strong> I will ensure accurate record-keeping of all financial transactions and maintain transparency in all financial matters of the residence.</p>
+          <p>6. <strong>System Security:</strong> I will take reasonable precautions to secure my account and prevent unauthorized access to the management system.</p>
+          <p>7. <strong>Regulatory Compliance:</strong> I will ensure that all actions taken under my authority comply with relevant housing laws and regulations.</p>
+          <p>8. <strong>Continuous Improvement:</strong> I will participate in necessary training and updates to improve service quality for residents.</p>
+        </div>
+      </div>
+      
+      <div class="flex items-center text-left mb-6">
+        <Checkbox v-model="agreementChecked" :binary="true" inputId="agreement" />
+        <label for="agreement" class="ml-2 text-gray-700">I have read, understood, and agree to adhere to the above code of conduct in my role as a management staff member. I understand this is part of my account verification process.</label>
+      </div>
+      
+      <div class="flex justify-center">
+        <Button 
+          label="Accept & Verify Account" 
+          icon="pi pi-check" 
+          @click="acceptAgreement" 
+          :disabled="!agreementChecked"
+          class="p-button-primary" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Main dashboard content - only show when agreement is accepted -->
+  <div v-else class="p-4 bg-[var(--p-primary-50)]">
     <div class="flex justify-between items-end mb-6">
       <div>
         <h1 class="text-2xl font-bold text-[var(--p-primary-700)]">Management Dashboard</h1>
@@ -200,11 +244,22 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import Chart from 'primevue/chart';
 import Dropdown from 'primevue/dropdown';
 import ProgressBar from 'primevue/progressbar';
 import StatsCard from '@/components/StatsCard.vue';
+import Checkbox from 'primevue/checkbox';
+import Button from 'primevue/button';
+import { supabase } from '@/api/supabase';
+import { useAuthStore } from '@/stores/auth';
+
+const authStore = useAuthStore();
+const emit = defineEmits(['update:sidenavVisibility']);
+
+// Agreement state
+const isAgreementAccepted = ref(false);
+const agreementChecked = ref(false);
 
 // Chart animation control
 const isChartVisible = ref(false);
@@ -216,6 +271,82 @@ const years = [2021, 2022, 2023, 2024];
 // Stats data
 const totalResidents = ref(147);
 const totalMaintenanceFees = ref(285750);
+
+// Check if user has already accepted the agreement
+onMounted(async () => {
+  try {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    
+    if (authUser) {
+      // Get user details
+      const { data: userData, error: userError } = await supabase
+        .from('User')
+        .select('userID, isVerified')
+        .eq('userID', authUser.id)
+        .single();
+      
+      if (!userError && userData) {
+        // For management users, isVerified indicates agreement acceptance
+        isAgreementAccepted.value = userData.isVerified || false;
+        
+        // Emit event to show/hide sidenav based on verification status
+        emit('update:sidenavVisibility', isAgreementAccepted.value);
+      }
+    }
+    
+    // Only initialize charts if agreement is accepted
+    if (isAgreementAccepted.value) {
+      initializeCharts();
+    }
+  } catch (error) {
+    console.error('Error fetching user data:', error);
+  }
+});
+
+// Watch for changes in agreement acceptance to update sidenav visibility
+watch(isAgreementAccepted, (newValue) => {
+  emit('update:sidenavVisibility', newValue);
+});
+
+// Function to accept agreement
+const acceptAgreement = async () => {
+  try {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    
+    if (authUser) {
+      // Update user record to mark as verified (agreement accepted)
+      const { error } = await supabase
+        .from('User')
+        .update({ isVerified: true })
+        .eq('userID', authUser.id);
+      
+      if (error) throw error;
+      
+      // Update local state
+      isAgreementAccepted.value = true;
+      
+      // Update sidenav visibility
+      emit('update:sidenavVisibility', true);
+      
+      // Initialize charts after a short delay
+      setTimeout(() => {
+        initializeCharts();
+      }, 300);
+    }
+  } catch (error) {
+    console.error('Error updating agreement status:', error);
+  }
+};
+
+// Initialize charts with animation
+const initializeCharts = () => {
+  console.log('Dashboard mounted, fetching data...');
+  
+  // Add a small delay before showing charts to ensure DOM is ready
+  setTimeout(() => {
+    isChartVisible.value = true;
+  }, 300);
+};
 
 // Format currency
 const formatCurrency = (value) => {
@@ -495,16 +626,6 @@ const trendOptions = {
     easing: 'easeOutQuart'
   }
 };
-
-onMounted(() => {
-  // Simulate API call to get data
-  console.log('Dashboard mounted, fetching data...');
-  
-  // Add a small delay before showing charts to ensure DOM is ready
-  setTimeout(() => {
-    isChartVisible.value = true;
-  }, 300);
-});
 </script>
 
 <style>
@@ -589,5 +710,80 @@ onMounted(() => {
 
 :deep(.p-progressbar-value) {
   background: #A7C5FF;
+}
+
+/* Agreement styles */
+.agreement-container {
+  max-width: 800px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+}
+
+.agreement-icon-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background-color: rgba(77, 91, 191, 0.1);
+}
+
+.agreement-icon-container::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-color: rgba(77, 91, 191, 0.05);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.7;
+  }
+  
+  50% {
+    transform: scale(1.05);
+    opacity: 0.3;
+  }
+  
+  100% {
+    transform: scale(0.95);
+    opacity: 0.7;
+  }
+}
+
+.animation-fade-in {
+  animation: fade-in 0.6s ease-out forwards;
+}
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.content-scale-in {
+  animation: content-scale 0.5s ease-out forwards;
+  transform-origin: top center;
+}
+
+@keyframes content-scale {
+  0% {
+    opacity: 0;
+    transform: scaleY(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
 }
 </style>
