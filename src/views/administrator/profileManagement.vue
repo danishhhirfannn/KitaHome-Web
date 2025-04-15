@@ -194,8 +194,7 @@
         </div>
       </div>
 
-      <div class="flex justify-between items-center mb-4">
-        <SelectButton v-model="value" :options="options" size="small"/>
+      <div class="mt-6">
         <Button 
           label="Disable User"
           icon="pi pi-ban"
@@ -204,188 +203,6 @@
           class="!text-red-600 hover:!bg-red-50"
           size="small"
         />
-      </div>
-
-      <div class="transition-wrapper">
-        <TransitionGroup name="fade-slide">
-          <!-- Identity Section -->
-          <div v-if="value === 'Identity'" :key="'identity'" class="border border-gray-200 p-4 rounded-2xl w-full">
-            <h4 class="text-lg font-semibold text-gray-900">Personal Information</h4>
-            <div class="space-y-4">
-              <div>
-                <p class="text-sm font-medium text-gray-500">Verification Documents</p>
-                <ul class="mt-2 space-y-2">
-                  <li v-if="selectedUser.identification_url" class="flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                      <i class="pi pi-file text-primary-500"></i>
-                      <a :href="selectedUser.identification_url" 
-                         target="_blank"
-                         class="text-primary-600 hover:text-primary-700">
-                        Identification Document
-                      </a>
-                    </div>
-                    <div class="flex gap-2">
-                      <Button 
-                        label="Accept"
-                        icon="pi pi-check"
-                        size="small"
-                        class="!bg-transparent !border-none !shadow-none hover:!bg-green-50 !text-green-600"
-                        @click="updateVerificationStatus('accept')"
-                      />
-                      <Button 
-                        label="Decline"
-                        icon="pi pi-times"
-                        size="small"
-                        class="!bg-transparent !border-none !shadow-none hover:!bg-red-50 !text-red-600"
-                        @click="handleDeclineClick"
-                      />
-                    </div>
-                  </li>
-                  <li v-else class="flex items-center gap-2 text-gray-400">
-                    <i class="pi pi-file"></i>
-                    <span>No ID Submitted</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          <!-- Finance Section -->
-          <div v-if="value === 'Finance'" :key="'finance'" class="border border-gray-200 p-4 rounded-2xl w-full">
-            <h4 class="text-lg font-semibold text-gray-900">Financial Information</h4>
-            <div class="space-y-6">
-              <!-- Transaction History -->
-              <div>
-                <h5 class="text-sm font-medium text-gray-500 mb-3">Transaction History</h5>
-                <ul class="space-y-3">
-                  <li v-for="(transaction, index) in [
-                    { date: 'Mar 1, 2024', type: 'March Maintenance Fee', amount: 250.00, status: 'paid' },
-                    { date: 'Feb 1, 2024', type: 'February Maintenance Fee', amount: 250.00, status: 'paid' },
-                    { date: 'Jan 1, 2024', type: 'January Maintenance Fee', amount: 250.00, status: 'paid' },
-                    { date: 'Dec 1, 2023', type: 'December Maintenance Fee', amount: 250.00, status: 'paid' },
-                    { date: 'Nov 1, 2023', type: 'November Maintenance Fee', amount: 250.00, status: 'paid' }
-                  ]" :key="index"
-                  class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                    <div class="flex items-start gap-3">
-                      <div class="w-8 h-8 rounded-full bg-primary-50 flex items-center justify-center flex-shrink-0">
-                        <i class="pi pi-wallet text-primary-500 text-sm"></i>
-                      </div>
-                      <div>
-                        <p class="text-sm font-medium text-gray-900">{{ transaction.type }}</p>
-                        <p class="text-xs text-gray-500">{{ transaction.date }}</p>
-                      </div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <span class="text-base font-semibold text-green-600">RM {{ transaction.amount.toFixed(2) }}</span>
-                    </div>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          <!-- Complaints Section -->
-          <div v-if="value === 'Complaints'" :key="'complaints'" class="border border-gray-200 p-4 rounded-2xl w-full">
-            <h4 class="text-lg font-semibold text-gray-900">Complaint History</h4>
-            <div class="space-y-6">
-              <!-- Complaints List -->
-              <div>
-                <h5 class="text-sm font-medium text-gray-500 mb-3">Recent Complaints</h5>
-                <ul class="space-y-3">
-                  <li v-for="complaint in [
-                    {
-                      complainID: 'CMP001',
-                      complainDescription: 'Noise disturbance from upper floor unit during late hours. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
-                      complainStatus: 'Resolved',
-                      complainSeverity: 'High',
-                      complainSentimentScore: -0.8,
-                      complainMagnitude: 0.9,
-                      complainCreatedAt: '2024-03-15T08:30:00'
-                    },
-                    {
-                      complainID: 'CMP002',
-                      complainDescription: 'Water leakage from ceiling in master bedroom',
-                      complainStatus: 'In Progress',
-                      complainSeverity: 'Medium',
-                      complainSentimentScore: -0.6,
-                      complainMagnitude: 0.7,
-                      complainCreatedAt: '2024-03-10T14:15:00'
-                    },
-                    {
-                      complainID: 'CMP003',
-                      complainDescription: 'Elevator maintenance needed on Block A',
-                      complainStatus: 'Pending',
-                      complainSeverity: 'Low',
-                      complainSentimentScore: -0.3,
-                      complainMagnitude: 0.4,
-                      complainCreatedAt: '2024-03-05T11:20:00'
-                    }
-                  ]" :key="complaint.complainID" 
-                    class="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <div class="flex justify-between items-start h-full">
-                      <!-- Left side content -->
-                      <div class="flex items-start gap-3 flex-1">
-                        <div class="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
-                          <i class="pi pi-exclamation-circle text-red-500 text-sm"></i>
-                        </div>
-                        <div class="flex-1">
-                          <span class="text-sm font-medium text-gray-900">{{ complaint.complainID }}</span>
-                          <p class="text-sm text-gray-700 mt-1">{{ complaint.complainDescription }}</p>
-                          <div class="flex items-center gap-4 mt-2">
-                            <div class="flex items-center gap-2">
-                              <span class="text-xs text-gray-500">Sentiment:</span>
-                              <span :class="{
-                                'text-xs font-medium': true,
-                                'text-red-600': complaint.complainSentimentScore < -0.5,
-                                'text-orange-600': complaint.complainSentimentScore >= -0.5 && complaint.complainSentimentScore < 0,
-                                'text-green-600': complaint.complainSentimentScore >= 0
-                              }">{{ complaint.complainSentimentScore.toFixed(2) }}</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                              <span class="text-xs text-gray-500">Magnitude:</span>
-                              <span class="text-xs font-medium text-primary-600">{{ complaint.complainMagnitude.toFixed(2) }}</span>
-                            </div>
-                            <!-- Created at timestamp -->
-                            <span class="text-xs text-gray-500">
-                              {{ new Date(complaint.complainCreatedAt).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              }) }}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <!-- Right side with status and timestamp -->
-                      <div class="flex flex-col items-end gap-4">
-                        <div class="flex gap-2">
-                          <span :class="{
-                            'px-2 py-1 text-xs rounded-full font-medium text-center': true,
-                            'bg-green-100 text-green-700': complaint.complainStatus === 'Resolved',
-                            'bg-yellow-100 text-yellow-700': complaint.complainStatus === 'In Progress',
-                            'bg-gray-100 text-gray-700': complaint.complainStatus === 'Pending'
-                          }">{{ complaint.complainStatus }}</span>
-                          <span :class="{
-                            'px-2 py-1 text-xs rounded-full font-medium text-center': true,
-                            'bg-red-100 text-red-700': complaint.complainSeverity === 'High',
-                            'bg-orange-100 text-orange-700': complaint.complainSeverity === 'Medium',
-                            'bg-blue-100 text-blue-700': complaint.complainSeverity === 'Low'
-                          }">{{ complaint.complainSeverity }}</span>
-                        </div>
-                        
-                        
-                      </div>
-                    </div>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </TransitionGroup>
       </div>
     </div>
   </Dialog>
@@ -552,7 +369,6 @@ import { supabase } from '@/api/supabase'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import InputText from 'primevue/inputtext'
-import SelectButton from 'primevue/selectbutton'
 import Toast from 'primevue/toast'
 import { useToast } from 'primevue/usetoast'
 import InputTextarea from 'primevue/textarea'
@@ -572,9 +388,6 @@ const filters = ref({
 })
 
 const showDialog = ref(false)
-const value = ref('Identity')
-const options = ref(['Identity', 'Finance', 'Complaints'])
-
 const showDeclineDialog = ref(false)
 const declineReason = ref('')
 

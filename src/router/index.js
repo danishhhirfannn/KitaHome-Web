@@ -126,6 +126,11 @@ const router = createRouter({
       component: complaintDetails,
     },
     {
+      path: '/resident/submitComplaint',
+      name: 'submit-complaint',
+      component: () => import('@/views/resident/submitComplaint.vue'),
+    },
+    {
       path: '/resident/chatroom',
       name: 'chatroom',
       component: chatroom,

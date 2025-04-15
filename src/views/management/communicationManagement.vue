@@ -94,7 +94,16 @@
                     <p class="text-sm text-gray-500">{{ selectedChatroom.residenceUnit || 'Unit information not available' }}</p>
                   </div>
                 </div>
-                <div>
+                <div class="flex items-center gap-2">
+                  <!-- Category Filter Dropdown -->
+                  <Dropdown
+                    v-model="categoryFilter"
+                    :options="categoryOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="All Categories"
+                    class="w-40"
+                  />
                   <Button 
                     icon="pi pi-ellipsis-h" 
                     class="p-button-text p-button-rounded" 
@@ -112,10 +121,11 @@
                   <i class="pi pi-spin pi-spinner text-primary-500 text-2xl"></i>
                 </div>
                 
-                <div v-else-if="messages.length === 0" class="flex flex-col justify-center items-center h-full text-gray-500">
+                <div v-else-if="filteredMessages.length === 0" class="flex flex-col justify-center items-center h-full text-gray-500">
                   <i class="pi pi-inbox text-4xl mb-3"></i>
-                  <p>No messages yet</p>
-                  <p class="mt-2 text-sm">Be the first to send a message!</p>
+                  <p>No messages in this category</p>
+                  <p v-if="categoryFilter !== 'all'" class="mt-2 text-sm">Try selecting a different category or 'All Messages'</p>
+                  <p v-else class="mt-2 text-sm">Be the first to send a message!</p>
                 </div>
                 
                 <transition-group 
@@ -123,7 +133,7 @@
                   tag="div"
                   class="message-container"
                 >
-                  <div v-for="(message, index) in messages" :key="message.id" class="mb-4">
+                  <div v-for="(message, index) in filteredMessages" :key="message.id" class="mb-4">
                     <div v-if="showDateDivider(message, index)" class="flex justify-center my-4">
                       <div class="px-3 py-1 bg-gray-100 rounded-full text-xs text-gray-500">
                         {{ formatMessageDate(message.timestamp) }}
@@ -144,6 +154,7 @@
                           ? 'bg-primary-100 text-primary-800' 
                           : 'bg-gray-100 text-gray-800'
                       ]">
+                        <!-- Remove category badge from top and just show message content -->
                         <p v-if="message.content">{{ message.content }}</p>
                         
                         <!-- Attachment preview -->
@@ -174,12 +185,24 @@
                           </a>
                         </div>
                         
-                        <div class="flex justify-end items-center mt-1">
-                          <span class="text-xs opacity-70">{{ formatMessageTime(message.timestamp) }}</span>
-                          <i v-if="message.senderId === currentUserId" :class="[
-                            'pi text-xs ml-1',
-                            message.read ? 'pi-check-circle text-green-500' : 'pi-check text-gray-400'
-                          ]"></i>
+                        <!-- Footer with timestamp, category tag and read status -->
+                        <div class="flex justify-between items-center mt-1">
+                          <!-- Category Tag - icon only with native tooltip -->
+                          <span 
+                            v-if="message.category" 
+                            :class="['text-2xs p-1 rounded-full inline-flex items-center justify-center w-4 h-4', getCategoryColor(message.category)]"
+                            :title="message.category.charAt(0).toUpperCase() + message.category.slice(1)"
+                          >
+                            <i :class="['pi text-2xs', getCategoryIcon(message.category)]"></i>
+                          </span>
+                          
+                          <div class="flex items-center">
+                            <span class="text-xs opacity-70">{{ formatMessageTime(message.timestamp) }}</span>
+                            <i v-if="message.senderId === currentUserId" :class="[
+                              'pi text-xs ml-1',
+                              message.read ? 'pi-check-circle text-green-500' : 'pi-check text-gray-400'
+                            ]"></i>
+                          </div>
                         </div>
                       </div>
                       
@@ -431,13 +454,31 @@ const imagePreviewDialog = ref(false);
 const previewImageUrl = ref('');
 const filePreviewDialog = ref(false);
 const previewFileUrl = ref('');
+const categoryFilter = ref('all'); // New ref for category filtering
+
+// Message categories and their keywords
+const messageCategories = {
+  finance: ['payment', 'rent', 'bill', 'fee', 'invoice', 'money', 'deposit', 'refund', 'cost', 'expense', 'pay', 'paid', '$', 'dollar', 'financial', 'budget', 'price', 'price'],
+  maintenance: ['repair', 'fix', 'broken', 'maintenance', 'leak', 'damage', 'plumbing', 'electrical', 'faulty', 'issue', 'malfunction', 'heating', 'cooling', 'water', 'door', 'window', 'toilet', 'sink', 'appliance'],
+  amenities: ['pool', 'gym', 'fitness', 'center', 'common', 'area', 'lounge', 'lobby', 'facility', 'parking', 'garage', 'bicycle', 'bike', 'storage', 'laundry', 'mail', 'package', 'deliveries', 'security'],
+  complaints: ['noise', 'loud', 'complaint', 'disturb', 'neighbor', 'bother', 'issue', 'problem', 'concerned', 'concern', 'unhappy', 'dissatisfied', 'upset', 'disappointed', 'irritated'],
+  requests: ['request', 'permission', 'apply', 'application', 'form', 'access', 'key', 'approval', 'allow', 'card'],
+  general: ['hi', 'hello', 'hey', 'thanks', 'thank', 'appreciate', 'good', 'morning', 'afternoon', 'evening', 'information', 'info', 'question', 'wondering']
+};
 
 // Available residents for the dropdown
-const availableResidents = ref([
-  { id: 1, name: 'John Smith', unit: 'Unit 101' },
-  { id: 2, name: 'Maria Garcia', unit: 'Unit 202' },
-  { id: 3, name: 'David Wong', unit: 'Unit 305' },
-  { id: 4, name: 'Sarah Johnson', unit: 'Unit 401' }
+const availableResidents = ref([]);
+
+// Filter categories for dropdown
+const categoryOptions = ref([
+  { label: 'All Messages', value: 'all' },
+  { label: 'Finance', value: 'finance' },
+  { label: 'Maintenance', value: 'maintenance' },
+  { label: 'Amenities', value: 'amenities' },
+  { label: 'Complaints', value: 'complaints' },
+  { label: 'Requests', value: 'requests' },
+  { label: 'General', value: 'general' },
+  { label: 'Uncategorized', value: 'uncategorized' }
 ]);
 
 // Computed properties
@@ -451,6 +492,18 @@ const filteredChatrooms = computed(() => {
     return chatroom.name.toLowerCase().includes(query) || 
            (chatroom.lastMessage && chatroom.lastMessage.toLowerCase().includes(query)) ||
            (chatroom.residenceUnit && chatroom.residenceUnit.toLowerCase().includes(query));
+  });
+});
+
+// Filtered messages based on category
+const filteredMessages = computed(() => {
+  if (categoryFilter.value === 'all') {
+    return messages.value;
+  }
+  
+  return messages.value.filter(message => {
+    const category = message.category || 'uncategorized';
+    return category === categoryFilter.value;
   });
 });
 
@@ -698,6 +751,9 @@ async function fetchMessages(chatroomId) {
       const user = userMap[message.messageUserID] || {};
       const isCurrentUser = message.messageUserID === currentUserId.value;
       
+      // Determine message category
+      const category = categorizationMessage(message.messageDescription);
+      
       return {
         id: message.messageID,
         senderId: message.messageUserID,
@@ -705,7 +761,8 @@ async function fetchMessages(chatroomId) {
         content: message.messageDescription,
         timestamp: message.created_at,
         read: message.messageStatus === 'read',
-        attachmentUrl: message.messageAttachmentUrl
+        attachmentUrl: message.messageAttachmentUrl,
+        category: category // Add category to the message object
       };
     });
     
@@ -768,7 +825,8 @@ async function sendMessage() {
         messageUserID: currentUserId.value,
         messageDescription: messageContent,
         messageStatus: 'sent',
-        messageAttachmentUrl: attachmentUrl
+        messageAttachmentUrl: attachmentUrl,
+        messageCategory: categorizationMessage(messageContent) // Add category when inserting
       })
       .select();
       
@@ -784,7 +842,8 @@ async function sendMessage() {
       content: messageContent,
       timestamp: data[0].created_at || new Date().toISOString(),
       read: false,
-      attachmentUrl: attachmentUrl
+      attachmentUrl: attachmentUrl,
+      category: data[0].messageCategory || categorizationMessage(messageContent) // Include category
     };
     
     // Add message to the messages array
@@ -1238,6 +1297,22 @@ onMounted(() => {
             console.error('Error fetching message sender:', userError);
           }
           
+          // Determine category for the new message
+          const messageContent = messageData.messageDescription;
+          const category = categorizationMessage(messageContent);
+          
+          // Update message category in database if it doesn't have one
+          if (!messageData.messageCategory) {
+            const { error: updateError } = await supabase
+              .from('Message')
+              .update({ messageCategory: category })
+              .eq('messageID', messageData.messageID);
+              
+            if (updateError) {
+              console.error('Error updating message category:', updateError);
+            }
+          }
+          
           // Add to messages array
           const newMessage = {
             id: messageData.messageID,
@@ -1245,7 +1320,9 @@ onMounted(() => {
             sender: userData?.fullName || userData?.email || 'Unknown User',
             content: messageData.messageDescription,
             timestamp: messageData.created_at,
-            read: false
+            read: false,
+            attachmentUrl: messageData.messageAttachmentUrl,
+            category: messageData.messageCategory || category // Use category from DB or newly calculated
           };
           
           messages.value.push(newMessage);
@@ -1313,9 +1390,25 @@ async function updateChatroomWithMessage(messageData) {
     if (chatroomIndex !== -1) {
       console.log('Updating chatroom in list with new message');
       
+      // Determine message category if not provided
+      const category = messageData.messageCategory || categorizationMessage(messageData.messageDescription);
+      
+      // Update message category in database if it doesn't exist
+      if (!messageData.messageCategory) {
+        const { error: updateError } = await supabase
+          .from('Message')
+          .update({ messageCategory: category })
+          .eq('messageID', messageData.messageID);
+          
+        if (updateError) {
+          console.error('Error updating message category:', updateError);
+        }
+      }
+      
       // Update the chatroom's last message
       chatrooms.value[chatroomIndex].lastMessage = messageData.messageDescription;
       chatrooms.value[chatroomIndex].lastMessageTime = messageData.created_at;
+      chatrooms.value[chatroomIndex].lastMessageCategory = category; // Track category in chatroom list
       
       // If not currently viewing this chatroom, increment unread count
       if (!selectedChatroom.value || selectedChatroom.value.id !== messageData.messageChatroomID) {
@@ -1406,6 +1499,83 @@ function formatFileSize(bytes) {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
+
+/**
+ * Categorize a message based on its content using keywords
+ * @param {string} message - The message content
+ * @returns {string} - The determined category
+ */
+function categorizationMessage(message) {
+  if (!message || typeof message !== 'string') {
+    return 'uncategorized';
+  }
+  
+  const messageText = message.toLowerCase();
+  
+  // Calculate scores for each category
+  const scores = {};
+  let maxScore = 0;
+  let bestCategory = 'uncategorized';
+  
+  for (const [category, keywords] of Object.entries(messageCategories)) {
+    scores[category] = 0;
+    
+    for (const keyword of keywords) {
+      // Check if the keyword is in the message
+      if (messageText.includes(keyword.toLowerCase())) {
+        // Increase score based on keyword length (longer keywords are more specific)
+        scores[category] += keyword.length;
+      }
+    }
+    
+    // Check if this category has the highest score
+    if (scores[category] > maxScore) {
+      maxScore = scores[category];
+      bestCategory = category;
+    }
+  }
+  
+  // If no category scores above threshold, return 'general'
+  return maxScore > 0 ? bestCategory : 'uncategorized';
+}
+
+/**
+ * Get the color associated with a message category
+ * @param {string} category - The message category
+ * @returns {string} - CSS color class
+ */
+function getCategoryColor(category) {
+  const colorMap = {
+    finance: 'bg-green-50 text-green-600',
+    maintenance: 'bg-orange-50 text-orange-600',
+    amenities: 'bg-blue-50 text-blue-600',
+    complaints: 'bg-red-50 text-red-600',
+    requests: 'bg-purple-50 text-purple-600',
+    general: 'bg-gray-50 text-gray-500',
+    uncategorized: 'bg-gray-50 text-gray-400'
+  };
+  
+  return colorMap[category] || colorMap.uncategorized;
+}
+
+/**
+ * Gets the category icon for display
+ * @param {string} category - The message category
+ * @returns {string} - PrimeIcons icon class
+ */
+function getCategoryIcon(category) {
+  const iconMap = {
+    finance: 'pi-dollar',
+    maintenance: 'pi-wrench',
+    amenities: 'pi-building',
+    complaints: 'pi-exclamation-circle',
+    requests: 'pi-inbox',
+    general: 'pi-comment',
+    uncategorized: 'pi-tag'
+  };
+  
+  return iconMap[category] || iconMap.uncategorized;
+}
 </script>
 
 <style scoped>
@@ -1443,6 +1613,12 @@ function formatFileSize(bytes) {
   position: relative;
   max-width: 100%;
   word-wrap: break-word;
+}
+
+/* Custom class for extra small text */
+.text-2xs {
+  font-size: 0.65rem !important;
+  line-height: 1rem !important;
 }
 
 :deep(.image-preview-dialog .p-dialog-content) {

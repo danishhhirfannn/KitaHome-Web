@@ -187,12 +187,6 @@ const goBack = () => {
   router.go(-1)
 }
 
-// Function to handle creating new complaint
-const createNewComplaint = () => {
-  // TODO: Implement complaint creation logic
-  console.log('Create new complaint clicked')
-}
-
 // Function to navigate to complaint details
 const navigateToDetails = (complaintId) => {
   router.push({ name: 'complaint-details', params: { id: complaintId } })
@@ -273,6 +267,11 @@ const truncateId = (id) => {
 // Image preview functionality
 const isImagePreviewVisible = ref(false)
 const previewImageUrl = ref('')
+
+// Function to handle creating new complaint
+const createNewComplaint = () => {
+  router.push('/resident/submitComplaint')
+}
 
 const openImagePreview = (imageUrl, event) => {
   // Prevent the click from propagating to the parent card
@@ -600,5 +599,37 @@ const closeImagePreview = () => {
   transform: scale(1.01);
   border-color: #4D5BBF;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Complaint Dialog Styling */
+:deep(.p-dialog-header) {
+  @apply bg-primary-50 border-b border-primary-100 px-6 py-4;
+}
+
+:deep(.p-dialog-title) {
+  @apply text-lg font-semibold text-primary-700;
+}
+
+:deep(.p-dialog-content) {
+  @apply p-0;
+}
+
+:deep(.p-dialog-footer) {
+  @apply p-4 bg-gray-50 border-t border-gray-100;
+}
+
+/* Dialog animations */
+:deep(.p-dialog-enter-active) {
+  transition: all 0.3s ease-out;
+}
+
+:deep(.p-dialog-leave-active) {
+  transition: all 0.2s ease-in;
+}
+
+:deep(.p-dialog-enter-from),
+:deep(.p-dialog-leave-to) {
+  opacity: 0;
+  transform: translateY(-20px);
 }
 </style>
