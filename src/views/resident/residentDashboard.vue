@@ -68,7 +68,9 @@
           </div>
         </div>
         <div class="mb-6 slide-in-left" style="animation-delay: 0.2s">
-          <div class="bg-primary rounded-xl shadow-sm overflow-hidden complaint-card" 
+          <!-- Regular payment card for pending payments -->
+          <div v-if="hasUpcomingPayment" 
+               class="bg-primary rounded-xl shadow-sm overflow-hidden complaint-card" 
                @click="router.push('/resident/financialManagementResident')" 
                style="cursor: pointer;">
             <div class="p-4">
@@ -83,6 +85,38 @@
                 <div class="flex justify-between items-end w-full">
                   <p class="text-xs font-light sm:text-sm text-white/80 max-w-[60%] line-clamp-3 tracking-normal pb-1">{{ upcomingPayment.description }}</p>
                   <p class="text-xl text-white sm:text-xl font-medium tracking-wide">{{ upcomingPayment.amount }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Alternative card for when no payments are pending -->
+          <div v-else
+               class="bg-primary rounded-xl shadow-sm overflow-hidden complaint-card relative" 
+               @click="router.push('/resident/financialManagementResident')" 
+               style="cursor: pointer;">
+            <!-- Floating bubbles background -->
+            <div class="bubbles-container absolute inset-0 overflow-hidden">
+              <div class="bubble bubble-1"></div>
+              <div class="bubble bubble-2"></div>
+              <div class="bubble bubble-3"></div>
+              <div class="bubble bubble-4"></div>
+              <div class="bubble bubble-5"></div>
+            </div>
+            <div class="p-4 relative z-10">
+              <div class="flex flex-col gap-2">
+                <div class="flex justify-between items-start sm:items-center w-full flex-wrap sm:flex-nowrap">
+                  <h4 class="text-sm sm:text-base text-white font-medium sm:mb-0 tracking-wide">All Payments Up To Date</h4>
+                  <div class="px-3 sm:px-4 py-0.5 rounded-full bg-white/20 text-white text-[10px] sm:text-xs flex items-center gap-2 sm:gap-2">
+                    <i class="pi pi-check-circle" style="font-size: 10px"></i>
+                    Completed
+                  </div>
+                </div>
+                <div class="flex justify-between items-end w-full">
+                  <p class="text-xs font-light sm:text-sm text-white/80 max-w-[80%] line-clamp-3 tracking-normal pb-1">Your account is in good standing. There are no pending payments at this time.</p>
+                  <div class="rounded-full bg-white/20 h-12 w-12 flex items-center justify-center">
+                    <i class="pi pi-thumbs-up text-white text-lg"></i>
+                  </div>
                 </div>
               </div>
             </div>
@@ -278,7 +312,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { supabase } from '@/api/supabase'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
@@ -303,6 +337,13 @@ const userData = ref({
   residenceName: 'Loading...',
   residencePhoto: null,
   unitNumber: ''
+})
+
+// Compute if there's an upcoming payment
+const hasUpcomingPayment = computed(() => {
+  return upcomingPayment.value.title !== 'No Upcoming Payments' && 
+         upcomingPayment.value.amount !== 'RM 0.00' &&
+         upcomingPayment.value.title !== 'Error Loading Payments';
 })
 
 // Fetch user verification status and user data
@@ -426,7 +467,7 @@ const fetchUpcomingPayments = async (userId) => {
     } else {
       upcomingPayment.value = {
         title: 'No Upcoming Payments',
-        description: 'You have no pending invoices at this time.',
+        description: 'Your account is up to date. Thank you for your prompt payments.',
         dueIn: '-',
         amount: 'RM 0.00'
       }
@@ -990,5 +1031,151 @@ const toggleMenu = (event) => {
 
 :deep(.announcement-dialog .p-dialog-header) {
   display: none;
+}
+
+/* Floating bubbles animation styles */
+.bubbles-container {
+  z-index: 1;
+}
+
+.bubble {
+  position: absolute;
+  background-color: rgba(255, 255, 255, 0.25);
+  border-radius: 50%;
+  opacity: 0;
+  animation-duration: 10s;
+  animation-fill-mode: forwards;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+}
+
+.bubble-1 {
+  width: 50px;
+  height: 50px;
+  bottom: -25px;
+  left: 10%;
+  animation-name: bubble-float-1;
+  animation-delay: 0s;
+}
+
+.bubble-2 {
+  width: 35px;
+  height: 35px;
+  bottom: -20px;
+  left: 30%;
+  animation-name: bubble-float-2;
+  animation-delay: 2s;
+}
+
+.bubble-3 {
+  width: 45px;
+  height: 45px;
+  bottom: -25px;
+  left: 50%;
+  animation-name: bubble-float-3;
+  animation-delay: 1s;
+}
+
+.bubble-4 {
+  width: 30px;
+  height: 30px;
+  bottom: -20px;
+  left: 70%;
+  animation-name: bubble-float-4;
+  animation-delay: 3s;
+}
+
+.bubble-5 {
+  width: 40px;
+  height: 40px;
+  bottom: -25px;
+  left: 85%;
+  animation-name: bubble-float-5;
+  animation-delay: 0.5s;
+}
+
+@keyframes bubble-float-1 {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.8;
+  }
+  90% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateY(-120px) scale(1.2);
+    opacity: 0;
+  }
+}
+
+@keyframes bubble-float-2 {
+  0% {
+    transform: translateY(0) translateX(0) scale(1);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.7;
+  }
+  90% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: translateY(-100px) translateX(10px) scale(1.3);
+    opacity: 0;
+  }
+}
+
+@keyframes bubble-float-3 {
+  0% {
+    transform: translateY(0) translateX(0) scale(1);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.8;
+  }
+  90% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateY(-140px) translateX(-15px) scale(1.2);
+    opacity: 0;
+  }
+}
+
+@keyframes bubble-float-4 {
+  0% {
+    transform: translateY(0) translateX(0) scale(1);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.7;
+  }
+  90% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: translateY(-90px) translateX(10px) scale(1.4);
+    opacity: 0;
+  }
+}
+
+@keyframes bubble-float-5 {
+  0% {
+    transform: translateY(0) translateX(0) scale(1);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.8;
+  }
+  90% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateY(-130px) translateX(-5px) scale(1.3);
+    opacity: 0;
+  }
 }
 </style>
