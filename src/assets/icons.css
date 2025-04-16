@@ -1,0 +1,7 @@
+/* Ensure PrimeIcons are properly loaded */
+@import 'primeicons/primeicons.css';
+
+/* Additional styling for icons if needed */
+.pi {
+  font-family: 'primeicons' !important;
+} 

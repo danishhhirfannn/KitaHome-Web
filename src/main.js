@@ -1,5 +1,6 @@
 import "./assets/tailwind.css";
 import "./style.css";
+import "./assets/icons.css";
 import PrimeVue from "primevue/config";
 import ToastService from 'primevue/toastservice';
 import ConfirmationService from 'primevue/confirmationservice';
