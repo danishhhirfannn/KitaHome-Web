@@ -74,3 +74,26 @@
 }
 
 /* Button hover effects */
+
+/* Hide scrollbars */
+/* For Webkit browsers (Chrome, Safari) */
+::-webkit-scrollbar {
+    display: none;
+}
+
+/* For Firefox */
+* {
+    scrollbar-width: none;
+}
+
+/* For IE and Edge */
+* {
+    -ms-overflow-style: none;
+}
+
+/* Ensure the body doesn't overflow */
+html, body {
+    overflow: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
