@@ -60,7 +60,7 @@
                       <span class="text-xs text-gray-500">Due: {{ invoice.dueDate }}</span>
                       <span class="text-sm font-medium text-primary">{{ invoice.amount }}</span>
                     </div>
-                    <Button label="Pay Now" icon="pi pi-credit-card" class="p-button-sm p-button-text p-button-white mt-3 w-full custom-pay-button" />
+                    <Button label="Pay Now" icon="pi pi-credit-card" class="p-button-sm p-button-text p-button-white mt-3 w-full custom-pay-button" @click="initiatePayment(invoice)" />
                   </div>
                 </div>
               </div>
@@ -232,14 +232,67 @@
         <div class="pb-16 sm:pb-20"></div>
       </div>
     </div>
+    
+    <!-- Payment Confirmation Dialog -->
+    <Dialog 
+      v-model:visible="paymentDialog" 
+      header="Payment Confirmation" 
+      :modal="true" 
+      :dismissableMask="false" 
+      :closable="!isProcessingPayment"
+      :style="{width: '90vw', maxWidth: '450px'}"
+    >
+      <div class="payment-dialog-content">
+        <div v-if="selectedInvoice" class="mb-4">
+          <div class="bg-primary-50 p-4 rounded-lg mb-4">
+            <h3 class="text-lg font-semibold text-primary-700 mb-2">{{ selectedInvoice.title }}</h3>
+            <p class="text-sm text-gray-700 mb-3">{{ selectedInvoice.description }}</p>
+            <div class="flex justify-between text-sm">
+              <span class="text-gray-600">Due date:</span>
+              <span class="font-medium">{{ selectedInvoice.dueDate }}</span>
+            </div>
+            <div class="flex justify-between mt-2">
+              <span class="text-gray-600 text-sm">Amount:</span>
+              <span class="font-bold text-primary-700">{{ selectedInvoice.amount }}</span>
+            </div>
+          </div>
+          
+          <p class="text-sm text-gray-600 mb-4">
+            By clicking "Proceed to Payment", you'll be redirected to our secure payment provider where you can complete the transaction.
+          </p>
+          
+          <div class="payment-security-info flex items-center p-3 bg-gray-50 rounded-lg mb-4">
+            <i class="pi pi-lock text-green-500 mr-2"></i>
+            <span class="text-xs text-gray-600">Your payment information is processed securely by Stripe.</span>
+          </div>
+        </div>
+        
+        <div class="flex justify-end">
+          <Button 
+            label="Cancel" 
+            class="p-button-text mr-2" 
+            @click="paymentDialog = false" 
+            :disabled="isProcessingPayment"
+          />
+          <Button 
+            label="Proceed to Payment" 
+            icon="pi pi-arrow-right" 
+            class="p-button-primary" 
+            @click="processPayment"
+            :loading="isProcessingPayment"
+          />
+        </div>
+      </div>
+    </Dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '@/api/supabase'
 import { useAuthStore } from '@/stores/auth'
+import { createStripeCheckoutSession, redirectToCheckout } from '@/api/stripe'
 import Button from 'primevue/button'
 import Tabs from 'primevue/tabs'
 import TabList from 'primevue/tablist'
@@ -274,6 +327,11 @@ const uploadPreviewUrl = ref(null)
 const isUploading = ref(false)
 const fileInputRef = ref(null)
 const customFileName = ref('')
+
+// Payment related states
+const isProcessingPayment = ref(false)
+const paymentDialog = ref(false)
+const selectedInvoice = ref(null)
 
 // Function to go back to the previous page
 const goBack = () => {
@@ -562,8 +620,57 @@ const fetchDocuments = () => {
     })
 }
 
-// Fetch user data
+// Function to initiate payment for an invoice
+const initiatePayment = (invoice) => {
+  selectedInvoice.value = invoice
+  paymentDialog.value = true
+}
+
+// Function to process payment
+const processPayment = async () => {
+  if (!selectedInvoice.value) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'No invoice selected for payment',
+      life: 3000
+    })
+    return
+  }
+  
+  try {
+    isProcessingPayment.value = true
+    
+    // Create Stripe checkout session
+    const sessionData = await createStripeCheckoutSession(selectedInvoice.value)
+    
+    // Close dialog
+    paymentDialog.value = false
+    
+    // Redirect to Stripe checkout
+    redirectToCheckout(sessionData.id)
+  } catch (error) {
+    console.error('Payment initiation failed:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Payment Error',
+      detail: 'Unable to initiate payment. Please try again later.',
+      life: 5000
+    })
+  } finally {
+    isProcessingPayment.value = false
+  }
+}
+
+// Check if we're coming back from Stripe with a success/cancel
 onMounted(() => {
+  // Check for active tab in local storage (for when redirected back from payment)
+  const storedTab = localStorage.getItem('financeActiveTab')
+  if (storedTab) {
+    activeTabIndex.value = storedTab
+    localStorage.removeItem('financeActiveTab') // Clear after use
+  }
+  
   isLoading.value = true
   
   // Get user from auth store
@@ -703,8 +810,16 @@ onMounted(() => {
   background-color: #4D5BBF;
 }
 
+.bg-primary-50 {
+  background-color: #f0f2ff;
+}
+
 .text-primary {
   color: #4D5BBF;
+}
+
+.text-primary-700 {
+  color: #3a46a0;
 }
 
 /* Loading animation styles */
@@ -1063,5 +1178,32 @@ onMounted(() => {
 /* Document file item hover effect */
 .space-y-3 > div {
   cursor: pointer;
+}
+
+/* Payment dialog styles */
+.payment-dialog-content {
+  max-width: 100%;
+}
+
+.payment-security-info {
+  border-left: 3px solid #4ade80;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+:deep(.p-dialog) {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+:deep(.p-dialog-header) {
+  background-color: #f8fafc;
 }
 </style>

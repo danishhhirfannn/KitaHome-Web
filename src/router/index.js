@@ -25,6 +25,9 @@ import complaintDetails from '@/views/resident/complaintDetails.vue'
 import chatroom from '@/views/resident/chatroom.vue'
 import announcements from '@/views/resident/announcements.vue'
 import profile from '@/views/resident/profile.vue'
+// Payment Views
+import PaymentSuccess from '@/views/resident/PaymentSuccess.vue'
+import PaymentCancel from '@/views/resident/PaymentCancel.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -150,6 +153,19 @@ const router = createRouter({
       name: 'logsManagement',
       component: logsManagement,
       meta: { requiresAuth: true, roles: ['management'] }
+    },
+    // Payment related routes
+    {
+      path: '/payment-success',
+      name: 'payment-success',
+      component: PaymentSuccess,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/payment-cancel',
+      name: 'payment-cancel',
+      component: PaymentCancel,
+      meta: { requiresAuth: true }
     },
   ],
 })
