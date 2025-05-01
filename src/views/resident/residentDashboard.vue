@@ -12,7 +12,7 @@
     <!-- Main Content - only show when loading is complete -->
     <div v-else class="content-fade-in">
       <!-- Header Section -->
-      <div class="flex items-center mb-4 pt-1 px-4 slide-in-top">
+      <div class="flex items-center mb-4 pt-12 px-4 slide-in-top">
         <Avatar 
           :image="userData.residencePhoto || userAvatar" 
           class="mr-3" 

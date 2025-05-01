@@ -1,7 +1,7 @@
 <template>
-  <div class="h-screen flex flex-col bg-gray-50">
-    <!-- Chat Header -->
-    <div class="bg-white shadow p-3 flex items-center justify-between">
+  <div class="chat-container flex flex-col bg-gray-50">
+    <!-- Chat Header - Fixed -->
+    <div class="bg-white shadow p-3 flex items-center justify-between chat-header">
       <div class="flex items-center gap-2">
         <Button 
           icon="pi pi-arrow-left" 
@@ -28,8 +28,8 @@
       <Menu id="chatroom-menu" ref="chatroomMenu" :model="chatroomMenuItems" :popup="true" />
     </div>
     
-    <!-- Messages Container -->
-    <div class="flex-1 overflow-y-auto p-4 bg-slate-50" ref="messagesContainer">
+    <!-- Messages Container - Scrollable -->
+    <div class="flex-1 overflow-y-auto p-4 bg-slate-50 message-area" ref="messagesContainer">
       <div v-if="loading" class="flex justify-center items-center h-full">
         <i class="pi pi-spin pi-spinner text-primary-500 text-2xl"></i>
       </div>
@@ -111,10 +111,13 @@
           </div>
         </div>
       </transition-group>
+      
+      <!-- Message spacer to ensure scrolling works correctly -->
+      <div class="h-4" ref="messageSpacer"></div>
     </div>
     
     <!-- Attachment Preview Area -->
-    <div v-if="selectedFile" class="bg-white border-t border-gray-200 p-2">
+    <div v-if="selectedFile" class="bg-white border-t border-gray-200 p-2 chat-attachment-preview">
       <div class="flex items-center gap-2">
         <div class="flex-1 flex items-center">
           <!-- Image preview -->
@@ -142,8 +145,8 @@
     </div>
     
     <!-- Message Input -->
-    <div class="bg-white border-t border-gray-200">
-      <div class="flex gap-2 items-center p-2 border border-gray-300 py-4">
+    <div class="bg-white border-t border-gray-200 ios-message-input chat-input">
+      <div class="flex gap-2 items-center p-2 py-4">
         <Button 
           icon="pi pi-paperclip" 
           class="p-button-rounded p-button-text" 
@@ -295,6 +298,34 @@ const imagePreviewDialog = ref(false);
 const previewImageUrl = ref('');
 const previewFileUrl = ref('');
 const filePreviewDialog = ref(false);
+
+// iOS keyboard detection
+const isKeyboardVisible = ref(false);
+
+// Setup for iOS keyboard events
+function setupIOSKeyboardEvents() {
+  // Only run this on iOS devices
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                
+  if (!isIOS) return;
+  
+  // Add event listeners for when the virtual keyboard shows/hides
+  window.addEventListener('focusin', (e) => {
+    // Check if the focused element is an input
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+      isKeyboardVisible.value = true;
+      // Ensure content is visible when typing
+      setTimeout(scrollToBottom, 300);
+    }
+  });
+  
+  window.addEventListener('focusout', () => {
+    isKeyboardVisible.value = false;
+    // Restore normal view when keyboard hides
+    setTimeout(scrollToBottom, 300);
+  });
+}
 
 // Menu items for the chatroom menu
 const chatroomMenuItems = ref([
@@ -610,7 +641,18 @@ async function fetchMessages(chatroomId) {
 
 function scrollToBottom() {
   if (messagesContainer.value) {
-    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+    // Use setTimeout to ensure the DOM has updated
+    setTimeout(() => {
+      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+      
+      // For iOS, also try to scroll to the message spacer
+      if (document.documentElement.style.getPropertyValue('--webkit-touch-callout') !== 'none') {
+        const spacer = document.querySelector('div[ref="messageSpacer"]');
+        if (spacer) {
+          spacer.scrollIntoView(false);
+        }
+      }
+    }, 100);
   }
 }
 
@@ -877,6 +919,9 @@ function downloadFile(url) {
 onMounted(async () => {
   console.log('Chatroom component mounted, initializing...');
   
+  // Set up iOS keyboard event handling
+  setupIOSKeyboardEvents();
+  
   // Set up real-time subscription for messages
   console.log('Setting up real-time subscription for messages...');
   const messageSubscription = supabase
@@ -934,6 +979,14 @@ onMounted(async () => {
   onUnmounted(() => {
     console.log('Chatroom component unmounted, cleaning up subscriptions');
     supabase.removeChannel(messageSubscription);
+    
+    // Clean up iOS keyboard event listeners if we're on iOS
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (isIOS) {
+      window.removeEventListener('focusin', () => {});
+      window.removeEventListener('focusout', () => {});
+    }
   });
   
   // Now proceed with async operations
@@ -969,6 +1022,40 @@ onMounted(async () => {
   word-break: break-word;
 }
 
+/* Chat layout structure */
+.chat-container {
+  height: 100vh;
+  height: 100dvh; /* Use dynamic viewport height if supported */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  flex-shrink: 0;
+}
+
+.message-area {
+  flex-grow: 1;
+  overflow-y: auto;
+  height: 0; /* This forces the flex item to only take available space */
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+}
+
+.chat-attachment-preview {
+  flex-shrink: 0;
+}
+
+.chat-input {
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+}
+
 /* File attachment styles */
 a[target="_blank"] {
   display: flex;
@@ -985,6 +1072,23 @@ a[target="_blank"] span {
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 180px;
+}
+
+/* iOS PWA Fix for Whitespace */
+@supports (-webkit-touch-callout: none) {
+  /* iOS specific styles */
+  .chat-container {
+    /* Use the full height available in the viewport on iOS */
+    height: -webkit-fill-available;
+  }
+  
+  /* iOS-specific input container fixes */
+  .ios-message-input {
+    /* Add safe area inset padding on iOS */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    /* Remove any auto margin that might cause whitespace */
+    margin-bottom: 0 !important;
+  }
 }
 
 /* Mobile-specific styles */
